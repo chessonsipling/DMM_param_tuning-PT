@@ -6,7 +6,7 @@ color = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 import sys
 
-prob_type = sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3R3X' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 ns = [10, 20, 30]
 
