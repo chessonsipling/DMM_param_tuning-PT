@@ -1,0 +1,8 @@
+__pycache__/
+results/
+.idea/
+.venv/
+.DS_Store
+ckpts/
+graphs_colossus/
+test.py
