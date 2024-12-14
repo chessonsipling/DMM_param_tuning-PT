@@ -15,9 +15,9 @@ if __name__ == '__main__':
     os.makedirs(f'results/{prob_type}', exist_ok=True)
     os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
     #os.makedirs(f'graphs/{prob_type}', exist_ok=True)
-    ns = [10, 20, 30]
+    ns = [40, 50, 60]
     instances_per_size = 100
-    replicas = 10
+    replicas = 25
     cnf_files = []
     for n in ns:
         cnf_files_n = []
