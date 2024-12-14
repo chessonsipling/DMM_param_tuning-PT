@@ -42,7 +42,7 @@ class Solver_PT:
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
             # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
-            self.steps = int(5e3)
+            self.steps = int(2.7e4)
         else:
             self.steps = steps
         self.best_param = None
@@ -61,17 +61,17 @@ class Solver_PT:
                       [0, 0],
                       [0, 0],
                       [2.1, 2.1]]
-        starting_params = {'alpha_by_beta': 0.5,
-                           'beta': 1,
-                           'gamma': 0.2,
-                           'delta_by_gamma': 0.2,
-                           'zeta': 0.0001,
+        starting_params = {'alpha_by_beta': 0.3639862545528617,
+                           'beta': 2.05175251906634,
+                           'gamma': 0.021710113067934148,
+                           'delta_by_gamma': 0.4171335077799522,
+                           'zeta': 0.0036965976082975966,
                            'lr': 1.0,
                            'alpha_inc': 0,
                            'jump_thrs': 0,
                            'jump_mag': 2.1} #initial values for alpha_by_beta, beta, gamma, delta_by_gamma, zeta
         current_replica_details = [self.objective(starting_params)] * self.replicas #initializes details for all replicas, which start at the same point in parameter space
-        cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0],
+        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0.1, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0.003, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0.003, 0, 0, 0, 0, 0],
@@ -79,14 +79,26 @@ class Solver_PT:
                [0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0]]
+               [0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
+        distrb_params = {'alpha_by_beta': 0.005,
+                    'beta': 10,
+                    'gamma': 0.003,
+                    'delta_by_gamma': 0.003,
+                    'zeta': 10} #for draws from mixed gaussian and scale-free distributions
         inverse_temps = np.geomspace(1e-1, 1e4, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically ###
         ###inverse_temps = np.geomspace(1e-2, 1e7, max_evals) #for <E(T)> plot generation (simulated annealing) ###
         for i in range(max_evals):
             new_replica_details = [0] * self.replicas
             for j in range(self.replicas):
+                new_param_values = [0] * len(starting_params)
                 #Metropolis Update (w/ a multivariate normal as the generating distribution)
-                new_param_values = np.random.multivariate_normal([value for key, value in current_replica_details[j]['param'].items()], cov) #determines a new set of parameters from the old ones, if they exist
+                #Determines a new set of parameters from the old ones, if they exist
+                #new_param_values = np.random.multivariate_normal([value for key, value in current_replica_details[j]['param'].items()], cov) #drawn from multivariate gaussian
+                for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & scale-free distributions
+                    if key == 'alpha_by_beta' or key == 'gamma' or key == 'delta_by_gamma': #draw from gaussians
+                        new_param_values[k] = np.random.normal(current_replica_details[j]['param'][key], np.sqrt(distrb_params[key]))
+                    elif key == 'beta' or key == 'zeta': #draw from log-normals
+                        new_param_values[k] = np.random.lognormal(np.log(current_replica_details[j]['param'][key]), np.log(distrb_params[key]))
                 new_param_values = [new_param_values[k] if (new_param_values[k] >= param_mask[k][0] and new_param_values[k] <= param_mask[k][1])
                                   else list(current_replica_details[j]['param'].values())[k] for k in range(len(new_param_values))] #verifies that params are within physical bounds
                 new_params = dict(zip(list(current_replica_details[j]['param'].keys()), new_param_values))

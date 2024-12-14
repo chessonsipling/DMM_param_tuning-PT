@@ -8,12 +8,13 @@ from model import DMM
 from dmm_utils import run_dmm, avalanche_analysis, avalanche_analysis_mp, avalanche_size_distribution
 mp.set_start_method('spawn', force=True)
 import matplotlib.pyplot as plt
+import plt_config
 
 import sys
 
 
 def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
-    max_step = int(1e4)
+    max_step = int(1e5)
     avalanche_subprocesses = 5
     avalanche_minibatch = int(np.ceil(batch / avalanche_subprocesses))
     pool = mp.Pool(avalanche_subprocesses)
@@ -184,16 +185,24 @@ if __name__ == '__main__':
                    "lr": 1.0,
                    "alpha_inc": 0}]'''
         #[10, 20, 30] 3R3X, PT #diventra_choice
-        params = [{"alpha_by_beta": 0.3,
-                   "beta": 1.0,
-                   "gamma": 0.2,
-                   "delta_by_gamma": 0.2,
-                   "zeta": 1,
+        '''params = [{"alpha_by_beta": 0.06805874059816672,
+                   "beta": 4.850707467528604,
+                   "gamma": 0.01108894541776315,
+                   "delta_by_gamma": 0.5617086818983189,
+                   "zeta": 0.0005372553919645686,
+                   "lr": 1.0,
+                   "alpha_inc": 0}]'''
+        #[40, 50, 60] 3R3X, PT #diventra_choice
+        params = [{"alpha_by_beta": 0.08590122617348511,
+                   "beta": 2.7625988068200114,
+                   "gamma": 0.02397029758216094,
+                   "delta_by_gamma": 0.5806227701271185,
+                   "zeta": 0.0041106125471870964,
                    "lr": 1.0,
                    "alpha_inc": 0}]
     simple = False
     batch = 100
-    ns = [10, 20, 30]
+    ns = [40, 50, 60]
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
         graph_dir = f'graphs/{prob_type}/Benchmark/{ns}'
@@ -211,54 +220,68 @@ if __name__ == '__main__':
             for j in range(5): #iterate over batch, could be up to j in range(batch)
                 for k in range(len(spin_traj[i][0][j])): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
                     spin_traj_to_plot = [element[j][k] for element in spin_traj[i]] #n, step, batch, v/xl/xs
+                    #plt.plot(steps, spin_traj_to_plot, label=f'{k}')
                     plt.plot(steps, spin_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Voltages')
+                #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_v.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(len(xl_traj[i][0][j])) = ns[i]
+                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
                     xl_traj_to_plot = [element[j][k] for element in xl_traj[i]]
+                    #plt.plot(steps, xl_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xl_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Long Term Memories')
+                #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xl.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(len(xs_traj[i][0][j])) = ns[i]
+                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
                     xs_traj_to_plot = [element[j][k] for element in xs_traj[i]]
+                    #plt.plot(steps, xs_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xs_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Short Term Memories')
+                #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xs.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(len(C_traj[i][0][j])) = ns[i]
+                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
                     C_traj_to_plot = [element[j][k] for element in C_traj[i]]
+                    #plt.plot(steps, C_traj_to_plot, label=f'{k}')
                     plt.plot(steps, C_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Clause Functions')
+                #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_C.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(len(G_traj[i][0][j])) = ns[i]
-                    G_traj_to_plot = [element[j][k] for element in G_traj[i]]
-                    plt.plot(steps, G_traj_to_plot)
+                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                    for l in range(3): #iterates over 3 voltages in each clause
+                        G_traj_to_plot = [element[j][k][l] for element in G_traj[i]]
+                        #plt.plot(steps, G_traj_to_plot, label=f'{k}, {l}')
+                        plt.plot(steps, G_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Gradient Terms')
+                #plt.legend(ncol=3)
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_G.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(len(R_traj[i][0][j])) = ns[i]
-                    R_traj_to_plot = [element[j][k] for element in R_traj[i]]
-                    plt.plot(steps, R_traj_to_plot)
+                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                    for l in range(3): #iterates over 3 voltages in each clause
+                        R_traj_to_plot = [element[j][k][l] for element in R_traj[i]]
+                        #plt.plot(steps, R_traj_to_plot, label=f'{k}, {l}')
+                        plt.plot(steps, R_traj_to_plot)
                 plt.xlabel('Steps')
                 plt.ylabel('Rigidity Terms')
+                #plt.legend(ncol=3)
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_R.png')
                 plt.clf()

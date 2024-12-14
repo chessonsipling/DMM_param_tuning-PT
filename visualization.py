@@ -8,7 +8,7 @@ import sys
 
 prob_type = '3R3X' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = [10, 20, 30]
+ns = [40, 50, 60]
 
 os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 
@@ -26,7 +26,7 @@ for file in files:
     y_fit = np.exp(fit[1]) * x_fit ** fit[0]
     ax.scatter(ns, step, label=f'~ $N^{{{fit[0]:.2f}}}$', color=color[0])
     ax.plot(x_fit, y_fit, color='r', linestyle='--')
-    plt.legend()
+    plt.legend(fontsize=20)
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Number of variables')
