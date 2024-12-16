@@ -12,9 +12,9 @@ matplotlib.use('Agg')  # much faster but no interactive sessions
 import sys
 
 eqn_choice = 'diventra_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
-prob_type = '3R3X' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = np.array([40, 50, 60])
+ns = np.array([10, 30, 60])
 
 folder = f'results/{prob_type}'
 graph_dir = f'graphs_colossus/{prob_type}'

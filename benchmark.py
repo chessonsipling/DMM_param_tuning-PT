@@ -84,23 +84,23 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
 
 
 eqn_choice = 'diventra_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
-prob_type = '3R3X' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3SAT' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 if __name__ == '__main__':
     __spec__ = None
     mp.set_start_method('spawn', force=True)
 
-    params = [{'alpha_by_beta': 0.22524457543545404,
-                'beta': 1.2347240851463632,
-                'gamma': 0.17787510404154985,
-                'delta_by_gamma': 0.4919757315128267,
-                'zeta': 0.0003296680064710264,
+    params = [{'alpha_by_beta': 0.3308890086272528,
+                'beta': 4.853028015544617,
+                'gamma': 0.14321733863664327,
+                'delta_by_gamma': 0.22477819939974047,
+                'zeta': 0.0003474564628457381,
                 'lr': 1.0,
                 'alpha_inc': 0}]
 
     simple = False
     batch = 100
-    ns = [40, 50, 60]
+    ns = [10, 30, 60]
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
         graph_dir = f'graphs/{prob_type}/Benchmark/{ns}'

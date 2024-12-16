@@ -7,7 +7,7 @@ import pandas as pd
 
 import sys
 
-prob_type = '3R3X' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 simple = True
 
 if __name__ == '__main__':
@@ -15,9 +15,9 @@ if __name__ == '__main__':
     os.makedirs(f'results/{prob_type}', exist_ok=True)
     os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
     #os.makedirs(f'graphs/{prob_type}', exist_ok=True)
-    ns = [40, 50, 60]
+    ns = [10, 30, 60]
     instances_per_size = 100
-    replicas = 25
+    replicas = 10
     cnf_files = []
     for n in ns:
         cnf_files_n = []

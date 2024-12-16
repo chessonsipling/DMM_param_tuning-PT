@@ -6,9 +6,9 @@ color = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 import sys
 
-prob_type = '3R3X' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = [40, 50, 60]
+ns = [10, 30, 60]
 
 os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 

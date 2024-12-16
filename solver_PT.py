@@ -42,7 +42,7 @@ class Solver_PT:
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
             # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
-            self.steps = int(2.7e4)
+            self.steps = int(1e3)
         else:
             self.steps = steps
         self.best_param = None
@@ -61,11 +61,11 @@ class Solver_PT:
                       [0, 0],
                       [0, 0],
                       [2.1, 2.1]]
-        starting_params = {'alpha_by_beta': 0.22524457543545404,
-                           'beta': 1.2347240851463632,
-                           'gamma': 0.17787510404154985,
-                           'delta_by_gamma': 0.4919757315128267,
-                           'zeta': 0.0003296680064710264,
+        starting_params = {'alpha_by_beta': 0.5,
+                           'beta': 1,
+                           'gamma': 0.2,
+                           'delta_by_gamma': 0.1,
+                           'zeta': 0.0001,
                            'lr': 1.0,
                            'alpha_inc': 0,
                            'jump_thrs': 0,
