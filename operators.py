@@ -38,17 +38,11 @@ class OR(nn.Module):
         input = v[torch.arange(batch0).view((batch0, 1, 1)),
             self.input_idx]
         input = input * self.input_sign
-        #Clause short-term memories
         C = torch.max(input, dim=-1)[0]
         C = (1 - C) / 2
-        #Literal short-term memories
-        #C_tilde = (1 - input) / 2
 
         self.xl = nn.Parameter(torch.ones(self.shape_in[:-1]))
-        #Clause short-term memories
         self.xs = nn.Parameter(C)
-        #Literal short-term memories
-        #self.xs = nn.Parameter(C_tilde)
         self.xl.grad = torch.zeros_like(self.xl)
         self.xs.grad = torch.zeros_like(self.xs)
         self.alpha_multiplier = torch.ones_like(self.xl)
@@ -79,23 +73,17 @@ class OR(nn.Module):
         v_top = (1 - v_top) / 2
 
         C = v_top[:, :, 0]
-        #Literal short-term memories
-        #C_tilde = (1 - v_input) / 2
         G = C.unsqueeze(-1).repeat(1, 1, n_sat)
         G[torch.arange(batch).reshape(batch, 1),
         torch.arange(n_clause).reshape(1, n_clause),
         v_top_idx[:, :, 0]] = v_top[:, :, 1]
-        #Clause short-term memories
         G *= (self.xl * self.xs).unsqueeze(-1)
-        #Literal short-term memories
-        #G *= (self.xl).unsqueeze(-1) * self.xs
 
         R = torch.zeros(batch, n_clause, n_sat)
         R[torch.arange(batch).reshape(batch, 1),
         torch.arange(n_clause).reshape(1, n_clause),
         v_top_idx[:, :, 0]] = C
 
-        #Clause short-term memories
         if eqn_choice == 'zeta_zero':
             R *= (1 - self.xs).unsqueeze(-1)
         elif eqn_choice == 'sean_choice':
@@ -104,22 +92,13 @@ class OR(nn.Module):
             R *= ((zeta * self.xl) * (1 - self.xs)).unsqueeze(-1)
         elif eqn_choice == 'yuanhang_choice':
             R *= ((zeta * torch.log(self.xl)) * (1 - self.xs)).unsqueeze(-1)
-        #Literal short-term memories
-        #if eqn_choice == 'zeta_zero':
-            #R *= (1 - self.xs)
-        #elif eqn_choice == 'sean_choice':
-            #R *= ((1 + zeta * self.xl).unsqueeze(-1) * (1 - self.xs))
-        #elif eqn_choice == 'diventra_choice':
-            #R *= ((zeta * self.xl).unsqueeze(-1) * (1 - self.xs))
-        #elif eqn_choice == 'yuanhang_choice':
-            #R *= ((zeta * torch.log(self.xl)).unsqueeze(-1) * (1 - self.xs))
 
         dv = -(G + R) * self.input_sign
         dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))
-        #Clause short-term memories
-        dxs = -(beta * (self.xs + epsilon) * (C - gamma))
-        #Literal short-term memories
-        #dxs = -(beta * (self.xs + epsilon) * (C_tilde - gamma))
+        #Exponential x_{s,m}
+        #dxs = -(beta * (self.xs + epsilon) * (C - gamma))
+        #Linear x_{s, m}
+        dxs = -(beta * (C - gamma))
         ###################################################################################
 
 

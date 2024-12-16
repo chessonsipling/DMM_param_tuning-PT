@@ -90,116 +90,14 @@ if __name__ == '__main__':
     __spec__ = None
     mp.set_start_method('spawn', force=True)
 
-    if eqn_choice == 'rudy_simple':
-        params = [{"alpha": 0.04971315994791988, #0.04971315994791988
-                   "delta": 0.6836765386231144, #0.6836765386231144
-                   "chi": 0.3920514767288729, #0.3920514767288729
-                   "zeta": 1.0086447902802087, #1.0086447902802087
-                   "lr": 0.5774245666426205, #0.5774245666426205
-                   "alpha_inc": 0}] #setting to 0 removes the ability for alpha to be incremented based on the value of the long-term memory (one less hyperparameter)
-    elif eqn_choice == 'rudy_choice':
-        params = [{"alpha_by_beta": 0.6673803458867835, #0.6673803458867835
-                   "beta": 0.12025788113438217, #0.12025788113438217
-                   "delta": 0.23882315104794455, #0.23882315104794455
-                   "chi": 0.7666130790024149, #0.7666130790024149
-                   "zeta": 4.185850844132004, #4.185850844132004
-                   "lr": 3.207904660978736, #3.207904660978736
-                   "alpha_inc": 0}]
-    elif eqn_choice == 'zeta_zero' or eqn_choice == 'R_zero':
-        params = [{"alpha_by_beta": 0.0016847839733506176, #0.0016847839733506176 #0.2934482659380352
-                   "beta": 8356.965862561136, #8356.965862561136 #5307.693062806705
-                   "gamma": 0.008267617243376338, #0.008267617243376338 #0.2990065533858563
-                   "delta_by_gamma": 0.7723606265496351, #0.7723606265496351 #0.9149742827027212
-                   "lr": 2.3764017040725935, #2.3764017040725935 #1.3390921599920842
-                   "alpha_inc": 0}]
-    else: #sean_choice, diventra_choice, and yuanhang_choice
-        #[10, 20, 30] 3SAT
-        '''params = [{"alpha_by_beta": 0.5924294731644022,
-                   "beta": 3.377467133778823,
-                   "gamma": 0.02352653872127089,
-                   "delta_by_gamma": 0.8944393148402235,
-                   "zeta": 7.940151660134392e-05,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[50, 70, 90] 3SAT
-        '''params = [{"alpha_by_beta": 0.7930523072512615,
-                   "beta": 9.944653030715514,
-                   "gamma": 0.046993375175827884,
-                   "delta_by_gamma": 0.7925839173698284,
-                   "zeta": 0.03730299264560244,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[100, 120, 150] 3SAT
-        '''params = [{"alpha_by_beta": 0.8629877746071739,
-                   "beta": 9.899769142352335,
-                   "gamma": 0.04845602220107946,
-                   "delta_by_gamma": 0.617285687929963,
-                   "zeta": 0.6184799259157281,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[200, 300, 400] 3SAT
-        '''params = [{"alpha_by_beta": 0.6064391671677962,
-                   "beta": 9.8725033824004,
-                   "gamma": 0.050292721988009256,
-                   "delta_by_gamma": 0.45486557754853946,
-                   "zeta": 0.5513270812050881,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #3SAT from previous (green dot) 3SAT tests #diventra_choice
-        '''params = [{"alpha_by_beta": 0.628339734416646,
-                   "beta": 1304.0063531328492,
-                   "delta_by_gamma": 0.19512045666519495,
-                   "gamma": 0.20977267203687128,
-                   "lr": 3.2373030092084756,
-                   "zeta": 0.050745372628985166}]'''
-        #[10, 20, 30] 3R3X #diventra_choice
-        '''params = [{"alpha_by_beta": 0.0876601792699714,
-                   "beta": 56791.17970403271,
-                   "gamma": 0.11247833010649586,
-                   "delta_by_gamma": 0.8494656365136101,
-                   "zeta": 0.0008807016987375788,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[40, 60, 80] 3R3X #diventra_choice
-        '''params = [{"alpha_by_beta": 0.9900045691821819,
-                   "beta": 1.152386945113294,
-                   "gamma": 0.09578333549454954,
-                   "delta_by_gamma": 0.6963182254224278,
-                   "zeta": 0.7518624914100748,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[10, 20, 30] 3R3X (literal-specific memories) #sean_choice
-        '''params = [{"alpha_by_beta": 0.7438250509121647,
-                   "beta": 478.72915344318625,
-                   "gamma": 0.04431169598526268,
-                   "delta_by_gamma": 0.9788885953618904,
-                   "zeta": 0.0059093190306424535,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[40, 60, 80] 3R3X (literal-specific memories) #diventra_choice
-        '''params = [{"alpha_by_beta": 0.057246190146539574,
-                   "beta": 368.53637767096967,
-                   "gamma": 0.32632951899661117,
-                   "delta_by_gamma": 0.9056902101841241,
-                   "zeta": 2.8551877398828256,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[10, 20, 30] 3R3X, PT #diventra_choice
-        '''params = [{"alpha_by_beta": 0.06805874059816672,
-                   "beta": 4.850707467528604,
-                   "gamma": 0.01108894541776315,
-                   "delta_by_gamma": 0.5617086818983189,
-                   "zeta": 0.0005372553919645686,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]'''
-        #[40, 50, 60] 3R3X, PT #diventra_choice
-        params = [{"alpha_by_beta": 0.08590122617348511,
-                   "beta": 2.7625988068200114,
-                   "gamma": 0.02397029758216094,
-                   "delta_by_gamma": 0.5806227701271185,
-                   "zeta": 0.0041106125471870964,
-                   "lr": 1.0,
-                   "alpha_inc": 0}]
+    params = [{'alpha_by_beta': 0.22524457543545404,
+                'beta': 1.2347240851463632,
+                'gamma': 0.17787510404154985,
+                'delta_by_gamma': 0.4919757315128267,
+                'zeta': 0.0003296680064710264,
+                'lr': 1.0,
+                'alpha_inc': 0}]
+
     simple = False
     batch = 100
     ns = [40, 50, 60]
