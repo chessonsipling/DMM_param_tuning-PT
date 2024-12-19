@@ -14,7 +14,7 @@ import sys
 
 
 def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
-    max_step = int(1e5)
+    max_step = int(1e8)
     avalanche_subprocesses = 5
     avalanche_minibatch = int(np.ceil(batch / avalanche_subprocesses))
     pool = mp.Pool(avalanche_subprocesses)
@@ -42,7 +42,7 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
             files.append(file)
         dmm = DMM(files, simple, batch=batch, param=param, eqn_choice=eqn_choice)
         save_steps = 5000
-        transient = 0 #1000
+        transient = 1000
         # max_step = int(n ** 4 / 100)
         # max_step = save_steps + transient
         if simple:
@@ -84,23 +84,26 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
 
 
 eqn_choice = 'diventra_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
-prob_type = '3SAT' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+prob_type = '3R3X' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 if __name__ == '__main__':
     __spec__ = None
     mp.set_start_method('spawn', force=True)
 
-    params = [{'alpha_by_beta': 0.3308890086272528,
-                'beta': 4.853028015544617,
-                'gamma': 0.14321733863664327,
-                'delta_by_gamma': 0.22477819939974047,
-                'zeta': 0.0003474564628457381,
+    params = [{'alpha_by_beta': 0.04606640828510138,
+                'beta': 17.03266964243298,
+                'gamma': 0.07929160736413496,
+                'delta_by_gamma': 0.2898387826468161,
+                'zeta': 0.000633104143162844,
                 'lr': 1.0,
                 'alpha_inc': 0}]
 
-    simple = False
+    simple = True
     batch = 100
-    ns = [10, 30, 60]
+    ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+          110, 120, 130, 140, 150, 160, 170, 180, 190, 200,
+          250, 300, 350, 400, 450, 500, 550, 600, 650, 700,
+          750, 800, 850, 900, 950, 1000, 1100, 1200, 1300, 1400, 1500]
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
         graph_dir = f'graphs/{prob_type}/Benchmark/{ns}'
