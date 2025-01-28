@@ -41,8 +41,8 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
                 file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{instance_num:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{instance_num:04d}_XORgates.cnf'
             files.append(file)
         dmm = DMM(files, simple, batch=batch, param=param, eqn_choice=eqn_choice)
-        save_steps = 5000
-        transient = 1000
+        save_steps = 100
+        transient = 10
         # max_step = int(n ** 4 / 100)
         # max_step = save_steps + transient
         if simple:
@@ -83,27 +83,35 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
         return spin_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj
 
 
-eqn_choice = 'diventra_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
-prob_type = '3R3X' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+eqn_choice = 'sean_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
+prob_type = '3SAT' #sys.argv[2] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 if __name__ == '__main__':
     __spec__ = None
     mp.set_start_method('spawn', force=True)
 
-    params = [{'alpha_by_beta': 0.04606640828510138,
+    #3SAT
+    params = [{'alpha_by_beta': 0.45313481433413916,
+                'beta': 788.3050800202636, #78.83050800202636
+                'gamma': 0.3635604327568345,
+                'delta_by_gamma': 0.21883211263830715,
+                'zeta': 0.06294441488786634,
+                'lr': 1.0,
+                'alpha_inc': 0}]
+    
+    #3R3X
+    '''params = [{'alpha_by_beta': 0.04606640828510138,
                 'beta': 17.03266964243298,
                 'gamma': 0.07929160736413496,
                 'delta_by_gamma': 0.2898387826468161,
                 'zeta': 0.000633104143162844,
                 'lr': 1.0,
-                'alpha_inc': 0}]
+                'alpha_inc': 0}]'''
 
     simple = True
     batch = 100
-    ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
-          110, 120, 130, 140, 150, 160, 170, 180, 190, 200,
-          250, 300, 350, 400, 450, 500, 550, 600, 650, 700,
-          750, 800, 850, 900, 950, 1000, 1100, 1200, 1300, 1400, 1500]
+    ns = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000] #3SAT
+    #ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200] #3R3X
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
         graph_dir = f'graphs/{prob_type}/Benchmark/{ns}'
@@ -116,10 +124,25 @@ if __name__ == '__main__':
             spin_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj = param_scaling(param_i, str(i), eqn_choice, prob_type, batch, ns, simple)
 
     if not simple:
-        for i in range(len(ns)): #iterate over variable number
+        for i in range(len(ns)): #iterate over variable number, could be up to i in range(len(ns))
             steps = np.array(list(range(len(spin_traj[i]))))
-            for j in range(5): #iterate over batch, could be up to j in range(batch)
-                for k in range(len(spin_traj[i][0][j])): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
+
+            total_active_memories = 0
+            for j in range(batch):
+                active_memories = 0
+                for k in range(ns[i]):
+                    xs_traj_physical = [element[j][k] for element in xs_traj[i]]
+                    if max(xs_traj_physical) > 0.50:
+                        active_memories += 1
+                with open(f'results/{prob_type}/Benchmark/{ns}/active_memories_n={ns[i]}_batch={batch}.txt', 'a') as f:
+                    f.write(f'{active_memories}\n')
+                total_active_memories += active_memories
+            with open(f'results/{prob_type}/Benchmark/{ns}/total_active_memories_batch={batch}.txt', 'a') as f:
+                f.write(f'{ns[i]} {total_active_memories}\n')
+            print(f'Active Memories: {total_active_memories} out of {ns[i]}; {total_active_memories / (batch* int(ns[i]))}')
+
+            '''for j in range(5): #iterate over batch, could be up to j in range(batch)
+                for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
                     spin_traj_to_plot = [element[j][k] for element in spin_traj[i]] #n, step, batch, v/xl/xs
                     #plt.plot(steps, spin_traj_to_plot, label=f'{k}')
                     plt.plot(steps, spin_traj_to_plot)
@@ -130,7 +153,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_v.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xl_traj_to_plot = [element[j][k] for element in xl_traj[i]]
                     #plt.plot(steps, xl_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xl_traj_to_plot)
@@ -141,7 +164,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xl.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xs_traj_to_plot = [element[j][k] for element in xs_traj[i]]
                     #plt.plot(steps, xs_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xs_traj_to_plot)
@@ -152,7 +175,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xs.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     C_traj_to_plot = [element[j][k] for element in C_traj[i]]
                     #plt.plot(steps, C_traj_to_plot, label=f'{k}')
                     plt.plot(steps, C_traj_to_plot)
@@ -163,7 +186,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_C.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     for l in range(3): #iterates over 3 voltages in each clause
                         G_traj_to_plot = [element[j][k][l] for element in G_traj[i]]
                         #plt.plot(steps, G_traj_to_plot, label=f'{k}, {l}')
@@ -175,7 +198,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_G.png')
                 plt.clf()
 
-                for k in range(ns[i]): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     for l in range(3): #iterates over 3 voltages in each clause
                         R_traj_to_plot = [element[j][k][l] for element in R_traj[i]]
                         #plt.plot(steps, R_traj_to_plot, label=f'{k}, {l}')
@@ -185,7 +208,7 @@ if __name__ == '__main__':
                 #plt.legend(ncol=3)
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_R.png')
-                plt.clf()
+                plt.clf()'''
 
         '''for n in ns:
             dt_file = open(f'results/{prob_type}/Benchmark/{ns}/n{n}_dt.txt', 'r')

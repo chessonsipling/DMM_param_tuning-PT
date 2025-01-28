@@ -206,7 +206,7 @@ class Solver_PT:
         tts_stats = []
         unsolved_stats = []
         avalanche_stats = []
-        eqn_choice = 'diventra_choice' #param['eqn_choice'] #need to fix this so the multi-equation hyperopt functionality is restored
+        eqn_choice = 'sean_choice' #param['eqn_choice'] #need to fix this so the multi-equation hyperopt functionality is restored
         for i, n in enumerate(self.ns):
             # cnf_file = self.cnf_files[i][self.file_pointer]
             dmm = DMM(self.cnf_files[i], simple=self.simple, batch=self.batch, param=param, eqn_choice=eqn_choice, prob_type=self.prob_type)

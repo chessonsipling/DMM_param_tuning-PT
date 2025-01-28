@@ -31,22 +31,22 @@ class Solver:
     def __init__(self, ns, cnf_files, prob_type, simple, max_step=int(1e8), steps=None, batch=100):
         self.best_eqn_choice = ''
         self.space = hp.choice('choice', [
-            #{
-            #'eqn_choice': 'sean_choice',
-            #'alpha_by_beta': hp.uniform('alpha_by_beta-sean', 0, 1),
-            #'beta': hp.loguniform('beta-sean', np.log(1e-5), np.log(1e5)),
-            #'gamma': hp.uniform('gamma-sean', 0, 0.5),
-            #'delta_by_gamma': hp.uniform('delta_by_gamma-sean', 0, 1),
-            #'zeta': hp.loguniform('zeta-sean', np.log(1e-5), np.log(1)),
-            #},
             {
-            'eqn_choice': 'diventra_choice',
-            'alpha_by_beta': hp.uniform('alpha_by_beta-diventra', 0, 1),
-            'beta': hp.loguniform('beta-diventra', np.log(1e-5), np.log(1e2)),
-            'gamma': hp.uniform('gamma-diventra', 0, 0.5),
-            'delta_by_gamma': hp.uniform('delta_by_gamma-diventra', 0, 1),
-            'zeta': hp.loguniform('zeta-diventra', np.log(1e-5), np.log(1e1)),
-            }])
+            'eqn_choice': 'sean_choice',
+            'alpha_by_beta': hp.uniform('alpha_by_beta-sean', 0, 1),
+            'beta': hp.loguniform('beta-sean', np.log(1e-5), np.log(1e5)),
+            'gamma': hp.uniform('gamma-sean', 0, 0.5),
+            'delta_by_gamma': hp.uniform('delta_by_gamma-sean', 0, 1),
+            'zeta': hp.loguniform('zeta-sean', np.log(1e-5), np.log(1)),
+            }])#,
+            #{
+            #'eqn_choice': 'diventra_choice',
+            #'alpha_by_beta': hp.uniform('alpha_by_beta-diventra', 0, 1),
+            #'beta': hp.loguniform('beta-diventra', np.log(1e-5), np.log(1e2)),
+            #'gamma': hp.uniform('gamma-diventra', 0, 0.5),
+            #'delta_by_gamma': hp.uniform('delta_by_gamma-diventra', 0, 1),
+            #'zeta': hp.loguniform('zeta-diventra', np.log(1e-5), np.log(1e1)),
+            #}])
         #CHANGE param_0 FOR EACH NEW VARIABLE NUMBER RANGE
         self.param_0 = {
             'alpha_by_beta': 0.5,
