@@ -38,6 +38,7 @@ class Solver:
             'gamma': hp.uniform('gamma-sean', 0, 0.5),
             'delta_by_gamma': hp.uniform('delta_by_gamma-sean', 0, 1),
             'zeta': hp.loguniform('zeta-sean', np.log(1e-5), np.log(1)),
+            'rho': hp.loguniform('rho-sean', np.log(1e-1), np.log(1e3)),
             }])#,
             #{
             #'eqn_choice': 'diventra_choice',
@@ -46,6 +47,7 @@ class Solver:
             #'gamma': hp.uniform('gamma-diventra', 0, 0.5),
             #'delta_by_gamma': hp.uniform('delta_by_gamma-diventra', 0, 1),
             #'zeta': hp.loguniform('zeta-diventra', np.log(1e-5), np.log(1e1)),
+            #'rho': hp.loguniform('rho-diventra', np.log(1e-1), np.log(1e3)),
             #}])
         #CHANGE param_0 FOR EACH NEW VARIABLE NUMBER RANGE
         self.param_0 = {
@@ -54,6 +56,7 @@ class Solver:
             'gamma': 0.2,
             'delta_by_gamma': 0.2,
             'zeta': 0.0001,
+            'rho': 10,
             'lr': 1.0,
             'alpha_inc': 0,
             'jump_thrs': 0,

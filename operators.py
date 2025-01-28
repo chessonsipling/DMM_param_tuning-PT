@@ -60,9 +60,9 @@ class OR(nn.Module):
         elif eqn_choice == 'rudy_choice':
             alpha_by_beta, beta, delta, chi, zeta = param
         elif eqn_choice == 'zeta_zero' or eqn_choice == 'R_zero':
-            alpha_by_beta, beta, gamma, delta_by_gamma = param
+            alpha_by_beta, beta, gamma, delta_by_gamma, rho = param
         else:
-            alpha_by_beta, beta, gamma, delta_by_gamma, zeta = param
+            alpha_by_beta, beta, gamma, delta_by_gamma, zeta, rho = param
         epsilon = 1e-3
 
         v_top, v_top_idx = torch.topk(v_input, 2, dim=-1)
@@ -94,7 +94,10 @@ class OR(nn.Module):
             R *= ((zeta * torch.log(self.xl)) * (1 - self.xs)).unsqueeze(-1)
 
         dv = -(G + R) * self.input_sign
-        dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))
+        #Linear x_{l,m}
+        #dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))
+        #Linear growth, exponential decay x_{l,m}
+        dxl = torch.where(C >= delta_by_gamma*gamma, -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma)), -(10 * (C - delta_by_gamma*gamma) * (self.xl - 1)))
         #Exponential x_{s,m}
         #dxs = -(beta * (self.xs + epsilon) * (C - gamma))
         #Linear x_{s, m}

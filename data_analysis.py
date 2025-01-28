@@ -54,10 +54,10 @@ elif eqn_choice == 'rudy_choice':
     params = ['alpha_by_beta', 'beta', 'delta', 'chi', 'zeta']
     param_is_log = [True, True, False, True, True]
 elif eqn_choice == 'zeta_zero' or eqn_choice == 'R_zero':
-    params = ['alpha_by_beta', 'beta',  'gamma', 'delta_by_gamma']
+    params = ['alpha_by_beta', 'beta',  'gamma', 'delta_by_gamma', 'rho']
     param_is_log = [False, True, False, False, False]
 else: #sean_choice, diventra_choice, and yuanhang_choice
-    params = ['alpha_by_beta', 'beta', 'gamma', 'delta_by_gamma', 'zeta']
+    params = ['alpha_by_beta', 'beta', 'gamma', 'delta_by_gamma', 'zeta', 'rho']
     param_is_log = [False, True, False, False, True]
 relevant_stats = ['unsat_mean', 'unsat_std', 'unsat_skewness', 'unsat_kurtosis', 'slope', 'intercept', 'r', 'avl_max']
 n_param = len(params)

@@ -57,6 +57,7 @@ class Solver_PT:
                       [0, 0.5],
                       [0, 1],
                       [1e-5, 1e1],
+                      [1e-1, 1e3],
                       [1.0, 1.0],
                       [0, 0],
                       [0, 0],
@@ -66,25 +67,28 @@ class Solver_PT:
                            'gamma': 0.01108894541776315,
                            'delta_by_gamma': 0.5617086818983189,
                            'zeta': 0.0005372553919645686,
+                           'rho': 10,
                            'lr': 1.0,
                            'alpha_inc': 0,
                            'jump_thrs': 0,
                            'jump_mag': 2.1} #initial values for alpha_by_beta, beta, gamma, delta_by_gamma, zeta
         current_replica_details = [self.objective(starting_params)] * self.replicas #initializes details for all replicas, which start at the same point in parameter space
-        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0.1, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0.003, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0.003, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0.000001, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
+        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0.1, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0.003, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0.000001, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
         distrb_params = {'alpha_by_beta': 0.005,
                     'beta': 10,
                     'gamma': 0.003,
                     'delta_by_gamma': 0.003,
-                    'zeta': 10} #for draws from mixed gaussian and scale-free distributions
+                    'zeta': 10,
+                    'rho': 10} #for draws from mixed gaussian and scale-free distributions
         inverse_temps = np.geomspace(1e-1, 1e4, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically ###
         ###inverse_temps = np.geomspace(1e-2, 1e7, max_evals) #for <E(T)> plot generation (simulated annealing) ###
         for i in range(max_evals):
@@ -97,7 +101,7 @@ class Solver_PT:
                 for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & scale-free distributions
                     if key == 'alpha_by_beta' or key == 'gamma' or key == 'delta_by_gamma': #draw from gaussians
                         new_param_values[k] = np.random.normal(current_replica_details[j]['param'][key], np.sqrt(distrb_params[key]))
-                    elif key == 'beta' or key == 'zeta': #draw from log-normals
+                    elif key == 'beta' or key == 'zeta' or key == 'rho': #draw from log-normals
                         new_param_values[k] = np.random.lognormal(np.log(current_replica_details[j]['param'][key]), np.log(distrb_params[key]))
                 new_param_values = [new_param_values[k] if (new_param_values[k] >= param_mask[k][0] and new_param_values[k] <= param_mask[k][1])
                                   else list(current_replica_details[j]['param'].values())[k] for k in range(len(new_param_values))] #verifies that params are within physical bounds

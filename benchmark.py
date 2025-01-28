@@ -92,10 +92,11 @@ if __name__ == '__main__':
 
     #3SAT
     params = [{'alpha_by_beta': 0.45313481433413916,
-                'beta': 788.3050800202636, #78.83050800202636
+                'beta': 78.83050800202636,
                 'gamma': 0.3635604327568345,
                 'delta_by_gamma': 0.21883211263830715,
                 'zeta': 0.06294441488786634,
+                'rho': 10, #???
                 'lr': 1.0,
                 'alpha_inc': 0}]
     
@@ -105,12 +106,13 @@ if __name__ == '__main__':
                 'gamma': 0.07929160736413496,
                 'delta_by_gamma': 0.2898387826468161,
                 'zeta': 0.000633104143162844,
+                'rho': 10, #???
                 'lr': 1.0,
                 'alpha_inc': 0}]'''
 
-    simple = True
+    simple = False
     batch = 100
-    ns = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000] #3SAT
+    ns = [10, 20, 30] #[10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000] #3SAT
     #ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200] #3R3X
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
@@ -127,7 +129,7 @@ if __name__ == '__main__':
         for i in range(len(ns)): #iterate over variable number, could be up to i in range(len(ns))
             steps = np.array(list(range(len(spin_traj[i]))))
 
-            total_active_memories = 0
+            '''total_active_memories = 0
             for j in range(batch):
                 active_memories = 0
                 for k in range(ns[i]):
@@ -139,10 +141,10 @@ if __name__ == '__main__':
                 total_active_memories += active_memories
             with open(f'results/{prob_type}/Benchmark/{ns}/total_active_memories_batch={batch}.txt', 'a') as f:
                 f.write(f'{ns[i]} {total_active_memories}\n')
-            print(f'Active Memories: {total_active_memories} out of {ns[i]}; {total_active_memories / (batch* int(ns[i]))}')
+            print(f'Active Memories: {total_active_memories} out of {ns[i]}; {total_active_memories / (batch* int(ns[i]))}')'''
 
-            '''for j in range(5): #iterate over batch, could be up to j in range(batch)
-                for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
+            for j in range(5): #iterate over batch, could be up to j in range(batch)
+                '''for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
                     spin_traj_to_plot = [element[j][k] for element in spin_traj[i]] #n, step, batch, v/xl/xs
                     #plt.plot(steps, spin_traj_to_plot, label=f'{k}')
                     plt.plot(steps, spin_traj_to_plot)
@@ -151,7 +153,7 @@ if __name__ == '__main__':
                 #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_v.png')
-                plt.clf()
+                plt.clf()'''
 
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xl_traj_to_plot = [element[j][k] for element in xl_traj[i]]
@@ -164,7 +166,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xl.png')
                 plt.clf()
 
-                for k in range(10): #iterate over n, could be up to k in range(ns[i])
+                '''for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xs_traj_to_plot = [element[j][k] for element in xs_traj[i]]
                     #plt.plot(steps, xs_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xs_traj_to_plot)

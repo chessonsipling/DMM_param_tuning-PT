@@ -101,6 +101,7 @@ class DMM(nn.Module):
                 'beta': 4000,
                 'gamma': 0.15,
                 'delta_by_gamma': 0.15,
+                'rho': 10,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -112,6 +113,7 @@ class DMM(nn.Module):
                 'gamma': 0.25,
                 'delta_by_gamma': 0.2,
                 'zeta': 1e-3,
+                'rho': 10,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -222,10 +224,10 @@ class DMM(nn.Module):
                          self.param['chi'], self.param['zeta']]
         elif self.eqn_choice == 'zeta_zero' or self.eqn_choice == 'R_zero':
             param = [self.param['alpha_by_beta'], self.param['beta'], self.param['gamma'],
-                         self.param['delta_by_gamma']]
+                         self.param['delta_by_gamma'], self.param['rho']]
         else: #sean_choice, diventra_choice, and yuanhang_choice
             param = [self.param['alpha_by_beta'], self.param['beta'], self.param['gamma'],
-                         self.param['delta_by_gamma'], self.param['zeta']]
+                         self.param['delta_by_gamma'], self.param['zeta'], self.param['rho']]
         unsat_clauses = torch.zeros(self.batch, dtype=torch.int64)
         if not self.simple:
             xl = torch.empty(0)
