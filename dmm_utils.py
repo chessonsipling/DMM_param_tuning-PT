@@ -31,21 +31,13 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
     v_last = None
     # spin_flips = []
     if not simple:
-        xl_traj = []
-        xs_traj = []
-        C_traj = []
-        G_traj = []
-        R_traj = []
         spin_traj = []
         time_traj = []
     integration_time = torch.zeros(dmm.batch, dtype=torch.get_default_dtype())
 
     # transient_threshold = 1.5 * dmm.n_var ** 0.67
     for step in range(max_steps):
-        if simple:
-            unsat_clauses, dt = dmm.compiled_step()
-        else:
-            unsat_clauses, xl, xs, dt, C, G, R = dmm.compiled_step()
+        unsat_clauses, dt = dmm.compiled_step()
         integration_time += dt
         # is_transient[unsat_clauses < transient_threshold] = False
         # transient_end[is_transient ^ is_transient_last] = step
@@ -66,11 +58,6 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
                 if step < save_steps + transient:
                     spin_traj.append(dmm.v.data.clone())
                     time_traj.append(integration_time.clone())
-                    xl_traj.append(xl)
-                    xs_traj.append(xs)
-                    C_traj.append(C)
-                    G_traj.append(G)
-                    R_traj.append(R)
         if n_solved > break_threshold * dmm.batch:
         # if (n_solved_minibatch > break_threshold * dmm.minibatch).all():
             break
@@ -85,17 +72,17 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
             solution_file.close()'''
 
     # unsat_traj = torch.stack(unsat_traj, dim=-1)
-    '''if len(spin_traj) > 0: #<<<only needed for avalanche extraction
-        spin_traj = torch.stack(spin_traj, dim=-1)  # (batch, n, length)
-        time_traj = torch.stack(time_traj, dim=-1)  # (batch, length)
-    else:
-        spin_traj = torch.zeros(dmm.batch, dmm.n_var, 1)
-        time_traj = torch.zeros(dmm.batch, 1)
-    time_traj *= dmm.lr''' #<<<only needed for avalanche extraction
     if simple:
         return is_solved, solved_step, unsat_moments, step
     else:
-        return is_solved, solved_step, unsat_moments, spin_traj, time_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, step
+        if len(spin_traj) > 0:
+            spin_traj = torch.stack(spin_traj, dim=-1)  # (batch, n, length)
+            time_traj = torch.stack(time_traj, dim=-1)  # (batch, length)
+        else:
+            spin_traj = torch.zeros(dmm.batch, dmm.n_var, 1)
+            time_traj = torch.zeros(dmm.batch, 1)
+        time_traj *= dmm.lr
+        return is_solved, solved_step, unsat_moments, spin_traj, time_traj, step
 
 @torch.no_grad()
 def avalanche_analysis(spin_traj, time_traj, edges, time_window=0.5):

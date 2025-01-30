@@ -8,7 +8,7 @@ import sys
 
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000]
+ns = [10, 20, 30]
 
 os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 
@@ -45,7 +45,7 @@ for file in files:
     plt.close()
 
 #Plots active memories
-folder = f'results/{prob_type}/Benchmark/{ns}'
+'''folder = f'results/{prob_type}/Benchmark/{ns}'
 batch = 100
         
 files = os.listdir(folder)
@@ -63,4 +63,4 @@ for file in files:
     plt.ylabel('Active memories (%)')
     plt.savefig(f'{folder}/{file.split(".")[0]}.png', dpi=300, bbox_inches='tight')
     # plt.show()
-    plt.close()
+    plt.close()'''

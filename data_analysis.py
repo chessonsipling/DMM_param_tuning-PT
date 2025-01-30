@@ -14,7 +14,7 @@ import sys
 eqn_choice = 'sean_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = np.array(ns = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000])
+ns = np.array([10, 20, 30])
 
 folder = f'results/{prob_type}'
 graph_dir = f'graphs_colossus/{prob_type}'
@@ -48,16 +48,16 @@ optimal_param = dmm_params[best_metric_idx]
 #eqn_choice = optimal_param['eqn_choice']
 
 if eqn_choice == 'rudy_simple':
-    params = ['alpha', 'delta', 'chi', 'zeta']
+    params = ['alpha', 'delta', 'chi', 'zeta', 'dt_0']
     param_is_log = [True, False, True, True]
 elif eqn_choice == 'rudy_choice':
-    params = ['alpha_by_beta', 'beta', 'delta', 'chi', 'zeta']
+    params = ['alpha_by_beta', 'beta', 'delta', 'chi', 'zeta', 'dt_0']
     param_is_log = [True, True, False, True, True]
 elif eqn_choice == 'zeta_zero' or eqn_choice == 'R_zero':
-    params = ['alpha_by_beta', 'beta',  'gamma', 'delta_by_gamma', 'rho']
+    params = ['alpha_by_beta', 'beta',  'gamma', 'delta_by_gamma', 'dt_0']
     param_is_log = [False, True, False, False, False]
 else: #sean_choice, diventra_choice, and yuanhang_choice
-    params = ['alpha_by_beta', 'beta', 'gamma', 'delta_by_gamma', 'zeta', 'rho']
+    params = ['alpha_by_beta', 'beta', 'gamma', 'delta_by_gamma', 'zeta', 'dt_0']
     param_is_log = [False, True, False, False, True]
 relevant_stats = ['unsat_mean', 'unsat_std', 'unsat_skewness', 'unsat_kurtosis', 'slope', 'intercept', 'r', 'avl_max']
 n_param = len(params)
@@ -66,7 +66,7 @@ optim_param = np.zeros(n_param)
 with open(f'{graph_dir}/optimal_param_{ns}.json', 'w') as f:
     json.dump(optimal_param, f)
 
-'''unsat_moments = np.stack(unsat_moments, axis=0)
+unsat_moments = np.stack(unsat_moments, axis=0)
 unsat_moments[np.isnan(unsat_moments)] = 0
 unsat_moments[np.isinf(unsat_moments)] = 0
 unsat_moments_mean = np.mean(unsat_moments, axis=2)
@@ -169,4 +169,4 @@ for i, relevant_stat in enumerate(relevant_stats):
     ax.set_title(f'{relevant_stat} vs n')
     ax.legend()
     plt.savefig(f'{graph_dir}/Stat_{relevant_stat}_vs_n.png', dpi=300, bbox_inches='tight')
-    plt.close()'''
+    plt.close()

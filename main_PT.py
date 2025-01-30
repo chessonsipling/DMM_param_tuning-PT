@@ -8,7 +8,7 @@ import pandas as pd
 import sys
 
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
-simple = True
+simple = False #must be False to extract avalanches
 
 if __name__ == '__main__':
     __spec__ = None
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     #os.makedirs(f'graphs/{prob_type}', exist_ok=True)
     ns = [10, 20, 30]
     instances_per_size = 100
-    replicas = 25
+    replicas = 10
     cnf_files = []
     for n in ns:
         cnf_files_n = []
@@ -52,4 +52,4 @@ if __name__ == '__main__':
 
     #Standard PT
     solver = Solver_PT(ns, cnf_files, prob_type, simple, replicas, batch=instances_per_size)
-    solver.run(max_evals=40)
+    solver.run(max_evals=10)

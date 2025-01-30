@@ -42,7 +42,7 @@ class Solver_PT:
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
             # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
-            self.steps = int(4e4)
+            self.steps = int(2e3) #max number of allowable timesteps (arbitrary units, NOT necessarily of width dt) after transient
         else:
             self.steps = steps
         self.best_param = None
@@ -57,7 +57,7 @@ class Solver_PT:
                       [0, 0.5],
                       [0, 1],
                       [1e-5, 1e1],
-                      [1e-1, 1e3],
+                      [1e-2, 1],
                       [1.0, 1.0],
                       [0, 0],
                       [0, 0],
@@ -67,7 +67,7 @@ class Solver_PT:
                            'gamma': 0.01108894541776315,
                            'delta_by_gamma': 0.5617086818983189,
                            'zeta': 0.0005372553919645686,
-                           'rho': 10,
+                           'dt_0': 1,
                            'lr': 1.0,
                            'alpha_inc': 0,
                            'jump_thrs': 0,
@@ -78,7 +78,7 @@ class Solver_PT:
                [0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0.003, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0.000001, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0]
                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -88,7 +88,7 @@ class Solver_PT:
                     'gamma': 0.003,
                     'delta_by_gamma': 0.003,
                     'zeta': 10,
-                    'rho': 10} #for draws from mixed gaussian and scale-free distributions
+                    'dt_0': 3} #for draws from mixed gaussian and scale-free distributions
         inverse_temps = np.geomspace(1e-1, 1e4, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically ###
         ###inverse_temps = np.geomspace(1e-2, 1e7, max_evals) #for <E(T)> plot generation (simulated annealing) ###
         for i in range(max_evals):
@@ -101,7 +101,7 @@ class Solver_PT:
                 for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & scale-free distributions
                     if key == 'alpha_by_beta' or key == 'gamma' or key == 'delta_by_gamma': #draw from gaussians
                         new_param_values[k] = np.random.normal(current_replica_details[j]['param'][key], np.sqrt(distrb_params[key]))
-                    elif key == 'beta' or key == 'zeta' or key == 'rho': #draw from log-normals
+                    elif key == 'beta' or key == 'zeta' or key == 'dt_0': #draw from log-normals
                         new_param_values[k] = np.random.lognormal(np.log(current_replica_details[j]['param'][key]), np.log(distrb_params[key]))
                 new_param_values = [new_param_values[k] if (new_param_values[k] >= param_mask[k][0] and new_param_values[k] <= param_mask[k][1])
                                   else list(current_replica_details[j]['param'].values())[k] for k in range(len(new_param_values))] #verifies that params are within physical bounds
@@ -147,16 +147,16 @@ class Solver_PT:
 
         #LRO Contribution
         lro_metric = 0
-        '''# slope, intercept, r, avl_max = stats.transpose()
+        # slope, intercept, r, avl_max = stats.transpose()
         target_stats = np.concatenate([np.tile(np.array([-1.5, 0, -0.98]), (len(self.ns), 1)),
                                        np.log10(self.ns).reshape(-1, 1)], axis=1)
         target_std = np.tile(np.array([1, 0.5, 0.02, 0.2]), (len(self.ns), 1))
-        metric = np.abs((avalanche_stats - target_stats) / (target_std)) - 0.5
-        metric = np.maximum(metric, 0)
-        metric = np.exp(-np.sum(metric ** 2, axis=1) / 2)
-        metric = np.sum(1 - metric)
-        metric += 4 * target_stats[:, 0].std()
-        print('LRO contribution: ' + str(metric))'''
+        lro_metric = np.abs((avalanche_stats - target_stats) / (target_std)) - 0.5
+        lro_metric = np.maximum(lro_metric, 0)
+        lro_metric = np.exp(-np.sum(lro_metric ** 2, axis=1) / 2)
+        lro_metric = np.sum(1 - lro_metric)
+        lro_metric += 4 * target_stats[:, 0].std()
+        print('LRO contribution: ' + str(lro_metric))
 
         #UnSAT Contribution
         unsat_metric = 0
@@ -179,7 +179,7 @@ class Solver_PT:
             tts_kurt = tts_stats[i][3]
             tts_metric += 1*tts_mean# + 1*(np.abs(tts_mean/tts_var - 9/(tts_skewness**2)) + np.abs(tts_mean/tts_var - 15/tts_kurt))'''
 
-        instances_solved = [len(tts_stats[i]) for i in range(len(tts_stats))]
+        '''instances_solved = [len(tts_stats[i]) for i in range(len(tts_stats))]
         print('Instances Solved: ' + str(instances_solved))
         best_percentile = min(instances_solved)
         #print('Best Percentile: ' + str(best_percentile))
@@ -200,7 +200,7 @@ class Solver_PT:
             #print('TTS Slope Lower: ' + str(tts_slope_lower))
             tts_concavity = tts_slope_upper - tts_slope_lower
             print('TTS Concavity: ' + str(tts_concavity))
-            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity
+            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity'''
 
         metric += lro_metric + unsat_metric + tts_metric
         print('Total metric: ' + str(metric))
@@ -217,10 +217,10 @@ class Solver_PT:
             transient = 1000
             break_threshold = 0.5
             if self.simple:
-                is_solved, solved_step, unsat_moments, current_step = run_dmm(dmm, self.steps+transient, True, self.steps, transient, break_threshold)
+                is_solved, solved_step, unsat_moments, current_step = run_dmm(dmm, self.steps+transient, self.simple, self.steps, transient, break_threshold)
             else:
-                is_solved, solved_step, unsat_moments, spin_traj, time_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, current_step = \
-                    run_dmm(dmm, self.steps+transient, True, self.steps, transient, break_threshold)
+                is_solved, solved_step, unsat_moments, spin_traj, time_traj, current_step = \
+                    run_dmm(dmm, self.steps+transient, self.simple, self.steps, transient, break_threshold)
             solved_step[~is_solved] = current_step
             #print('Solved Step: ' + str(solved_step))
             #print('Current Step: ' + str(current_step))
@@ -231,7 +231,7 @@ class Solver_PT:
             true_solved_step = sorted(true_solved_step.tolist())
             print('True Solved Steps: ' + str(true_solved_step))
             #THESE ARE ONLY DISTRIBUTION STATS ON THE FIRST 51 INSTANCES TO BE SOLVED (doesn't work in all cases)
-            '''tts_mean = np.mean(true_solved_step)
+            tts_mean = np.mean(true_solved_step)
             tts_var = np.var(true_solved_step)
             tts_skewness = skew(true_solved_step)
             tts_kurt = kurtosis(true_solved_step)
@@ -239,11 +239,11 @@ class Solver_PT:
             #print('TTS Var: ' + str(tts_var))
             #print('TTS Skew: ' + str(tts_skewness))
             #print('TTS Kurtosis: ' + str(tts_kurt))
-            tts_stats.append([tts_mean, tts_var, tts_skewness, tts_kurt])'''
+            tts_stats.append([tts_mean, tts_var, tts_skewness, tts_kurt])
 
             tts_stats.append(true_solved_step)
 
-            '''#UnSAT Stats
+            #UnSAT Stats
             unsat_moments_sample_size = (solved_step + 1 - transient)
             unsat_moments_sample_size[is_solved] -= 1
             unsat_moments_sample_size.clamp_(min=1)
@@ -263,7 +263,7 @@ class Solver_PT:
 
             #Avalanche Stats
             avalanche_stat_i = self.avalanche_analysis(dmm, spin_traj, time_traj)
-            avalanche_stats.append(avalanche_stat_i)'''
+            avalanche_stats.append(avalanche_stat_i)
 
         unsolved_stats = np.array(unsolved_stats)
         avalanche_stats = np.array(avalanche_stats)

@@ -91,12 +91,12 @@ if __name__ == '__main__':
     mp.set_start_method('spawn', force=True)
 
     #3SAT
-    params = [{'alpha_by_beta': 0.45313481433413916,
-                'beta': 78.83050800202636,
-                'gamma': 0.3635604327568345,
-                'delta_by_gamma': 0.21883211263830715,
-                'zeta': 0.06294441488786634,
-                'rho': 10, #???
+    params = [{'alpha_by_beta': 0.21055781705776788,
+                'beta': 25.320478829230993,
+                'gamma': 0.03645442968658233,
+                'delta_by_gamma': 0.6198511183975558,
+                'zeta': 5.40766697229591e-05,
+                'dt_0': 0.2443282098029479,
                 'lr': 1.0,
                 'alpha_inc': 0}]
     
@@ -106,7 +106,7 @@ if __name__ == '__main__':
                 'gamma': 0.07929160736413496,
                 'delta_by_gamma': 0.2898387826468161,
                 'zeta': 0.000633104143162844,
-                'rho': 10, #???
+                'dt_0': 1.0, #???
                 'lr': 1.0,
                 'alpha_inc': 0}]'''
 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
             print(f'Active Memories: {total_active_memories} out of {ns[i]}; {total_active_memories / (batch* int(ns[i]))}')'''
 
             for j in range(5): #iterate over batch, could be up to j in range(batch)
-                '''for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
+                for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
                     spin_traj_to_plot = [element[j][k] for element in spin_traj[i]] #n, step, batch, v/xl/xs
                     #plt.plot(steps, spin_traj_to_plot, label=f'{k}')
                     plt.plot(steps, spin_traj_to_plot)
@@ -153,7 +153,7 @@ if __name__ == '__main__':
                 #plt.legend()
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_v.png')
-                plt.clf()'''
+                plt.clf()
 
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xl_traj_to_plot = [element[j][k] for element in xl_traj[i]]
@@ -166,7 +166,7 @@ if __name__ == '__main__':
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_xl.png')
                 plt.clf()
 
-                '''for k in range(10): #iterate over n, could be up to k in range(ns[i])
+                for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xs_traj_to_plot = [element[j][k] for element in xs_traj[i]]
                     #plt.plot(steps, xs_traj_to_plot, label=f'{k}')
                     plt.plot(steps, xs_traj_to_plot)
@@ -210,10 +210,10 @@ if __name__ == '__main__':
                 #plt.legend(ncol=3)
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_R.png')
-                plt.clf()'''
+                plt.clf()
 
-        '''for n in ns:
-            dt_file = open(f'results/{prob_type}/Benchmark/{ns}/n{n}_dt.txt', 'r')
+        for n in ns:
+            dt_file = open(f'results/{prob_type}/Benchmark/n{n}_dt.txt', 'r')
             dt_file_output = dt_file.readlines()
             dts = np.array((np.float_([element.split(', ')[:-1] for element in dt_file_output])))
             #print(dts)
@@ -229,4 +229,4 @@ if __name__ == '__main__':
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{n}_batch{i}_dt.png')
                 plt.clf()
-                print('Instance ' + str(i+1) + ' dt plotted!')'''
+                print('Instance ' + str(i+1) + ' dt plotted!')
