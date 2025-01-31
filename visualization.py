@@ -8,7 +8,7 @@ import sys
 
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
-ns = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000]
+ns = np.array([10, 20, 30])
 
 os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 
@@ -16,14 +16,18 @@ os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 folder = f'results/{prob_type}/Benchmark/{ns}'
 
 files = os.listdir(folder)
+ns = []
+step = []
+x_fit = []
+y_fit = []
 for file in files:
     if 'step' not in file or not file.endswith('.txt'):
         continue
     data = np.loadtxt(f'{folder}/{file}')
     fig, ax = plt.subplots(1, 1)
-    ns, step = data[:, 0], data[:, 1]
-    ns1 = ns #ns[1:43]
-    step1 = step #step[1:43]
+    ns1, step1 = data[:, 0], data[:, 1]
+    #ns1 = ns[1:43]
+    #step1 = step[1:43]
     fit1 = np.polyfit(np.log(ns1), np.log(step1), 1)
     x_fit1 = np.linspace(np.min(ns1), np.max(ns1), 1000)
     y_fit1 = np.exp(fit1[1]) * x_fit1 ** fit1[0]
@@ -32,20 +36,47 @@ for file in files:
     #fit2 = np.polyfit(np.log(ns2), np.log(step2), 1)
     #x_fit2 = np.linspace(np.min(ns2), np.max(ns2), 1000)
     #y_fit2 = np.exp(fit2[1]) * x_fit2 ** fit2[0]
-    ax.scatter(ns, step, label=f'~ $N^{{{fit1[0]:.2f}}}$', color=color[0])
-    ax.plot(x_fit1, y_fit1, color='r', linestyle='--')
-    #ax.plot(x_fit2, y_fit2, color='g', linestyle='--')
-    plt.legend(fontsize=20)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Number of variables')
-    plt.ylabel('Median steps')
-    plt.savefig(f'{folder}/{file.split(".")[0]}.png', dpi=300, bbox_inches='tight')
-    # plt.show()
-    plt.close()
+    ns.append(ns1)
+    step.append(step1)
+    x_fit.append(x_fit1)
+    y_fit.append(y_fit1)
+
+ax.scatter(ns1, step1, label=f'~ $N^{{{fit1[0]:.2f}}}$', color=color[0])
+ax.plot(x_fit1, y_fit1, color='r', linestyle='--')
+
+plt.legend(fontsize=18)
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('Number of variables')
+plt.ylabel('Median steps')
+plt.savefig(f'{folder}/{file.split(".")[0]}.png', dpi=300, bbox_inches='tight')
+# plt.show()
+plt.close()
+
+
+#Plots different param choices alongside one another
+'''params = [r'$\beta = 10*\beta_{opt}$', 'Optimal', r'$\beta = 100*\beta_{opt}$']
+colors = ['y', 'g', 'r']
+
+ax.scatter(ns[1], step[1], label=f'{params[1]}', color=colors[1])
+ax.scatter(ns[0], step[0], label=f'{params[0]}', color=colors[0])
+ax.scatter(ns[2], step[2], label=f'{params[2]}', color=colors[2])
+
+#ax.plot(x_fit1, y_fit1, color='r', linestyle='--')
+#ax.plot(x_fit2, y_fit2, color='g', linestyle='--')
+
+plt.legend(fontsize=18)
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('Number of variables')
+plt.ylabel('Median steps')
+plt.savefig(f'{folder}/combined.png', dpi=300, bbox_inches='tight')
+# plt.show()
+plt.close()'''
+
 
 #Plots active memories
-folder = f'results/{prob_type}/Benchmark/{ns}'
+'''folder = f'results/{prob_type}/Benchmark/{ns}'
 batch = 100
         
 files = os.listdir(folder)
@@ -63,4 +94,4 @@ for file in files:
     plt.ylabel('Active memories (%)')
     plt.savefig(f'{folder}/{file.split(".")[0]}.png', dpi=300, bbox_inches='tight')
     # plt.show()
-    plt.close()
+    plt.close()'''

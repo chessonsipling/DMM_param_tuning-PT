@@ -19,7 +19,7 @@ matplotlib.use('Agg')  # for running on server without GUI
 
 
 class DMM(nn.Module):
-    def __init__(self, filenames, simple=True, batch=100, param=None, plot_graph=False, eqn_choice='sean_choice', prob_type='3R3X'):
+    def __init__(self, filenames, simple=True, batch=100, param=None, plot_graph=False, eqn_choice='sean_choice', prob_type='3SAT'):
         super().__init__()
         # This version cannot deal with mixed SAT, where each clause may have different number of literals
         # Should work with Barthel and XORSAT instances. Let me know if there is any problem
@@ -80,6 +80,7 @@ class DMM(nn.Module):
                 'delta': 0.5,
                 'chi': 1e-1,
                 'zeta': 1e-1,
+                'dt_0': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -91,6 +92,7 @@ class DMM(nn.Module):
                 'delta': 0.5,
                 'chi': 1e-1,
                 'zeta': 1e-1,
+                'dt_0': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -101,7 +103,7 @@ class DMM(nn.Module):
                 'beta': 4000,
                 'gamma': 0.15,
                 'delta_by_gamma': 0.15,
-                'rho': 10,
+                'dt_0': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -113,7 +115,7 @@ class DMM(nn.Module):
                 'gamma': 0.25,
                 'delta_by_gamma': 0.2,
                 'zeta': 1e-3,
-                'rho': 10,
+                'dt_0': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -194,13 +196,7 @@ class DMM(nn.Module):
         if self.simple:
             unsat_clauses, dt = self.backward()
         else:
-            unsat_clauses, xl, xs, dt, C, G, R = self.backward()
-            #print('Delta t: ' + str(dt))
-            '''dt_file = open('results/' + self.prob_type + '/Benchmark/n' + str(self.n_var) + '_dt.txt', 'a')
-            for i in range(len(dt)):
-                dt_file.write(str(float(dt[i])) + ', ')
-            dt_file.write('\n')
-            dt_file.close()'''
+            unsat_clauses, v, xl, xs, dt, C, G, R = self.backward()
 
         # v_last = self.v.data.clone()
         self.optimizer.step()
@@ -210,7 +206,7 @@ class DMM(nn.Module):
         if self.simple:
             return unsat_clauses, dt
         else:
-            return unsat_clauses, xl, xs, dt, C, G, R
+            return unsat_clauses, v, xl, xs, dt, C, G, R
 
     def update_param(self, param):
         self.param.update(param)
@@ -218,18 +214,20 @@ class DMM(nn.Module):
     def backward(self):
         if self.eqn_choice == 'rudy_simple':
             param = [self.param['alpha'], self.param['delta'], self.param['chi'],
-                         self.param['zeta']]
+                         self.param['zeta'], self.param['dt_0']]
         elif self.eqn_choice == 'rudy_choice':
             param = [self.param['alpha_by_beta'], self.param['beta'], self.param['delta'],
-                         self.param['chi'], self.param['zeta']]
+                         self.param['chi'], self.param['zeta'], self.param['dt_0']]
         elif self.eqn_choice == 'zeta_zero' or self.eqn_choice == 'R_zero':
             param = [self.param['alpha_by_beta'], self.param['beta'], self.param['gamma'],
-                         self.param['delta_by_gamma'], self.param['rho']]
+                         self.param['delta_by_gamma'], self.param['dt_0']]
         else: #sean_choice, diventra_choice, and yuanhang_choice
             param = [self.param['alpha_by_beta'], self.param['beta'], self.param['gamma'],
-                         self.param['delta_by_gamma'], self.param['zeta'], self.param['rho']]
+                         self.param['delta_by_gamma'], self.param['zeta'], self.param['dt_0']]
         unsat_clauses = torch.zeros(self.batch, dtype=torch.int64)
+
         if not self.simple:
+            v = torch.empty(0)
             xl = torch.empty(0)
             xs = torch.empty(0)
             C = torch.empty(0)
@@ -240,21 +238,23 @@ class DMM(nn.Module):
                 Ci = OR_i.calc_grad(self.v, param, self.eqn_choice)
             else:
                 Ci, Gi, Ri, xli, xsi = OR_i.calc_grad(self.v, param, self.eqn_choice)
+                v = torch.cat((v, self.v))
                 xl = torch.cat((xl, xli))
                 xs = torch.cat((xs, xsi))
                 C = torch.cat((C, Ci))
                 G = torch.cat((G, Gi))
                 R = torch.cat((R, Ri))
             unsat_clauses += (Ci >= 0.5).sum(dim=1)
+
+        #Sean's adaptive time step
         max_dv = torch.max(torch.abs(self.v.grad), dim=1)[0] + 1e-6
-        #dt = self.lr / max_dv
-        dt = (self.lr / max_dv).clamp(1e-3, 0.1) #explicitly bounds dt (mostly to prevent it from becoming too large)
+        dt = (self.param['dt_0'] / max_dv).clamp(1e-3, 0.1) #explicitly bounds dt (mostly to prevent it from becoming too large)
         for param in self.parameters():
             param.grad.data *= dt.view((-1, ) + (1, )*(len(param.shape)-1))
         if self.simple:
             return unsat_clauses, dt
         else:
-            return unsat_clauses, xl, xs, dt, C, G, R
+            return unsat_clauses, v, xl, xs, dt, C, G, R
 
     def clamp(self, max_xl):
         self.v.data.clamp_(-1, 1)

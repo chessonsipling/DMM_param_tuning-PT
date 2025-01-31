@@ -38,7 +38,7 @@ class Solver:
             'gamma': hp.uniform('gamma-sean', 0, 0.5),
             'delta_by_gamma': hp.uniform('delta_by_gamma-sean', 0, 1),
             'zeta': hp.loguniform('zeta-sean', np.log(1e-5), np.log(1)),
-            'rho': hp.loguniform('rho-sean', np.log(1e-1), np.log(1e3)),
+            'dt_0': hp.loguniform('dt_0-sean', np.log(1e-2), np.log(1)),
             }])#,
             #{
             #'eqn_choice': 'diventra_choice',
@@ -47,7 +47,7 @@ class Solver:
             #'gamma': hp.uniform('gamma-diventra', 0, 0.5),
             #'delta_by_gamma': hp.uniform('delta_by_gamma-diventra', 0, 1),
             #'zeta': hp.loguniform('zeta-diventra', np.log(1e-5), np.log(1e1)),
-            #'rho': hp.loguniform('rho-diventra', np.log(1e-1), np.log(1e3)),
+            #'dt_0': hp.loguniform('dt_0-diventra', np.log(1e-2), np.log(1)),
             #}])
         #CHANGE param_0 FOR EACH NEW VARIABLE NUMBER RANGE
         self.param_0 = {
@@ -56,7 +56,7 @@ class Solver:
             'gamma': 0.2,
             'delta_by_gamma': 0.2,
             'zeta': 0.0001,
-            'rho': 10,
+            'dt_0': 1,
             'lr': 1.0,
             'alpha_inc': 0,
             'jump_thrs': 0,
@@ -69,6 +69,7 @@ class Solver:
                 'delta': hp.uniform('delta', 0, 1),
                 'chi': hp.loguniform('chi', np.log(1e-4), np.log(1e1)),
                 'zeta': hp.loguniform('zeta', np.log(1e-4), np.log(1e1)),
+                'dt_0': hp.loguniform('dt_0', np.log(1e-2), np.log(1)),
                 # 'alpha_inc': hp.loguniform('alpha_inc', np.log(1e-6), np.log(1e-2)),
                 # 'jump_thrs': hp.uniform('jump_thrs', 0, 1),
                 # 'jump_mag': hp.uniform('jump_mag', 2, 2.5)
@@ -78,6 +79,7 @@ class Solver:
                 'delta': 0.5,
                 'chi': 1e-1,
                 'zeta': 1e-1,
+                'dt_0': 1,
                 'lr': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
@@ -90,6 +92,7 @@ class Solver:
                 'delta': hp.uniform('delta', 0, 1),
                 'chi': hp.loguniform('chi', np.log(1e-4), np.log(1e1)),
                 'zeta': hp.loguniform('zeta', np.log(1e-4), np.log(1e1)),
+                'dt_0': hp.loguniform('dt_0', np.log(1e-2), np.log(1)),
                 # 'alpha_inc': hp.loguniform('alpha_inc', np.log(1e-6), np.log(1e-2)),
                 # 'jump_thrs': hp.uniform('jump_thrs', 0, 1),
                 # 'jump_mag': hp.uniform('jump_mag', 2, 2.5)
@@ -100,6 +103,7 @@ class Solver:
                 'delta': 0.5,
                 'chi': 1e-1,
                 'zeta': 1e-1,
+                'dt_0': 1,
                 'lr': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
@@ -111,6 +115,7 @@ class Solver:
                 'beta': hp.loguniform('beta', np.log(1e-2), np.log(1e4)),
                 'gamma': hp.uniform('gamma', 0, 0.5),
                 'delta_by_gamma': hp.uniform('delta_by_gamma', 0, 1),
+                'dt_0': hp.loguniform('dt_0', np.log(1e-2), np.log(1)),
                 # 'alpha_inc': hp.loguniform('alpha_inc', np.log(1e-6), np.log(1e-2)),
                 # 'jump_thrs': hp.uniform('jump_thrs', 0, 1),
                 # 'jump_mag': hp.uniform('jump_mag', 2, 2.5)
@@ -121,6 +126,7 @@ class Solver:
                 'gamma': 0.15,
                 'delta_by_gamma': 0.15,
                 'lr': 1.0,
+                'dt_0': 1,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
                 'jump_mag': 2.1
@@ -132,6 +138,7 @@ class Solver:
                 'gamma': hp.uniform('gamma', 0, 0.5),
                 'delta_by_gamma': hp.uniform('delta_by_gamma', 0, 1),
                 'zeta': hp.loguniform('zeta', np.log(1e-5), np.log(1)),
+                'dt_0': hp.loguniform('dt_0', np.log(1e-2), np.log(1)),
                 # 'alpha_inc': hp.loguniform('alpha_inc', np.log(1e-6), np.log(1e-2)),
                 # 'jump_thrs': hp.uniform('jump_thrs', 0, 1),
                 # 'jump_mag': hp.uniform('jump_mag', 2, 2.5)
@@ -142,6 +149,7 @@ class Solver:
                 'gamma': 0.25,
                 'delta_by_gamma': 0.2,
                 'zeta': 1e-3,
+                'dt_0': 1,
                 'lr': 1.0,
                 'alpha_inc': 0,
                 'jump_thrs': 0,
@@ -158,7 +166,7 @@ class Solver:
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
             # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
-            self.steps = int(1e3)
+            self.steps = int(5e3)
         else:
             self.steps = steps
         self.best_param = None
@@ -194,7 +202,7 @@ class Solver:
         cluster_sizes, memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var,
                                                            self.pool_avalanches, self.avalanche_minibatch,
                                                            self.avalanche_subprocesses, time_window)
-        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'{dmm.n_var}')
+        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.ns}/{dmm.n_var}')
         if memory_flag:
             self.steps = self.steps // 2
         return avalanche_stats
@@ -208,11 +216,11 @@ class Solver:
         target_stats = np.concatenate([np.tile(np.array([-1.5, 0, -0.98]), (len(self.ns), 1)),
                                        np.log10(self.ns).reshape(-1, 1)], axis=1)
         target_std = np.tile(np.array([1, 0.5, 0.02, 0.2]), (len(self.ns), 1))
-        metric = np.abs((avalanche_stats - target_stats) / (target_std)) - 0.5
-        metric = np.maximum(metric, 0)
-        metric = np.exp(-np.sum(metric ** 2, axis=1) / 2)
-        metric = np.sum(1 - metric)
-        metric += 4 * target_stats[:, 0].std()
+        lro_metric = np.abs((avalanche_stats - target_stats) / (target_std)) - 0.5
+        lro_metric = np.maximum(lro_metric, 0)
+        lro_metric = np.exp(-np.sum(lro_metric ** 2, axis=1) / 2)
+        lro_metric = np.sum(1 - lro_metric)
+        lro_metric += 4 * target_stats[:, 0].std()
         print('LRO contribution: ' + str(metric))'''
 
         #UnSAT Contribution
@@ -271,12 +279,13 @@ class Solver:
         for i, n in enumerate(self.ns):
             # cnf_file = self.cnf_files[i][self.file_pointer]
             dmm = DMM(self.cnf_files[i], simple=self.simple, batch=self.batch, param=param, eqn_choice=eqn_choice, prob_type=self.prob_type)
-            transient = 1000
+            transient = 100
             break_threshold = 0.5
             if self.simple:
-                is_solved, solved_step, unsat_moments, current_step = run_dmm(dmm, self.steps+transient, self.steps, transient, break_threshold)
+                is_solved, solved_step, unsat_moments, spin_traj, time_traj, current_step = \
+                    run_dmm(dmm, self.steps+transient, self.steps, transient, break_threshold)
             else:
-                is_solved, solved_step, unsat_moments, spin_traj, time_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, current_step = \
+                is_solved, solved_step, unsat_moments, spin_traj, time_traj,  xl_traj, xs_traj, C_traj, G_traj, R_traj, current_step = \
                     run_dmm(dmm, self.steps+transient, self.steps, transient, break_threshold)
             solved_step[~is_solved] = current_step
             #print('Solved Step: ' + str(solved_step))

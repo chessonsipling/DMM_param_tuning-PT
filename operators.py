@@ -56,13 +56,13 @@ class OR(nn.Module):
         v_input = v_input * self.input_sign  # (batch, n_clause, n_sat)
 
         if eqn_choice == 'rudy_simple':
-            alpha, delta, chi, zeta = param
+            alpha, delta, chi, zeta, _ = param
         elif eqn_choice == 'rudy_choice':
-            alpha_by_beta, beta, delta, chi, zeta = param
+            alpha_by_beta, beta, delta, chi, zeta, _ = param
         elif eqn_choice == 'zeta_zero' or eqn_choice == 'R_zero':
-            alpha_by_beta, beta, gamma, delta_by_gamma, rho = param
+            alpha_by_beta, beta, gamma, delta_by_gamma, _ = param
         else:
-            alpha_by_beta, beta, gamma, delta_by_gamma, zeta, rho = param
+            alpha_by_beta, beta, gamma, delta_by_gamma, zeta, _ = param
         epsilon = 1e-3
 
         v_top, v_top_idx = torch.topk(v_input, 2, dim=-1)

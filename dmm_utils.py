@@ -31,13 +31,15 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
     v_last = None
     # spin_flips = []
     if not simple:
+        v_traj = []
         xl_traj = []
         xs_traj = []
         C_traj = []
         G_traj = []
         R_traj = []
-        spin_traj = []
-        time_traj = []
+        dt_traj = []
+    spin_traj = []
+    time_traj = []
     integration_time = torch.zeros(dmm.batch, dtype=torch.get_default_dtype())
 
     # transient_threshold = 1.5 * dmm.n_var ** 0.67
@@ -45,8 +47,10 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
         if simple:
             unsat_clauses, dt = dmm.compiled_step()
         else:
-            unsat_clauses, xl, xs, dt, C, G, R = dmm.compiled_step()
+            unsat_clauses, v, xl, xs, dt, C, G, R = dmm.compiled_step()
         integration_time += dt
+        if not simple:
+            dt_traj.append(dt)
         # is_transient[unsat_clauses < transient_threshold] = False
         # transient_end[is_transient ^ is_transient_last] = step
         # is_transient_last = is_transient.clone()
@@ -62,10 +66,11 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
             unsat_moments += ((unsat_clauses * ~is_solved).to(torch.torch.get_default_dtype()).unsqueeze(1))\
                              ** torch.arange(1, 5, dtype=torch.torch.get_default_dtype())
             # unsat_traj.append(unsat_clauses)
-            if not simple:
-                if step < save_steps + transient:
-                    spin_traj.append(dmm.v.data.clone())
-                    time_traj.append(integration_time.clone())
+            if step < save_steps + transient:
+                spin_traj.append(dmm.v.data > 0)
+                time_traj.append(integration_time.clone())
+                if not simple:
+                    v_traj.append(dmm.v.data.clone())
                     xl_traj.append(xl)
                     xs_traj.append(xs)
                     C_traj.append(C)
@@ -85,17 +90,17 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
             solution_file.close()'''
 
     # unsat_traj = torch.stack(unsat_traj, dim=-1)
-    '''if len(spin_traj) > 0: #<<<only needed for avalanche extraction
+    if len(spin_traj) > 0:
         spin_traj = torch.stack(spin_traj, dim=-1)  # (batch, n, length)
         time_traj = torch.stack(time_traj, dim=-1)  # (batch, length)
     else:
         spin_traj = torch.zeros(dmm.batch, dmm.n_var, 1)
         time_traj = torch.zeros(dmm.batch, 1)
-    time_traj *= dmm.lr''' #<<<only needed for avalanche extraction
+    time_traj *= dmm.lr
     if simple:
-        return is_solved, solved_step, unsat_moments, step
+        return is_solved, solved_step, unsat_moments, spin_traj, time_traj, step
     else:
-        return is_solved, solved_step, unsat_moments, spin_traj, time_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, step
+        return is_solved, solved_step, unsat_moments, spin_traj, time_traj, v_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, dt_traj, step
 
 @torch.no_grad()
 def avalanche_analysis(spin_traj, time_traj, edges, time_window=0.5):
@@ -187,7 +192,7 @@ def avalanche_size_distribution(cluster_sizes, name):
         # ax.set_yscale('log')
         ax.set_xlabel('log10 (cluster size)')
         ax.set_ylabel('log10 (Probability)')
-        plt.savefig(f'graphs/{name}_{slope:.2f}_{intercept:.2f}_{r:.2f}.png',
+        plt.savefig(f'{name}_{slope:.2f}_{intercept:.2f}_{r:.2f}.png',
                     dpi=72, bbox_inches='tight')
         plt.close()
 
