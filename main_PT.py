@@ -8,16 +8,16 @@ import pandas as pd
 import sys
 
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
-simple = False #must be False to extract avalanches
 
 if __name__ == '__main__':
     __spec__ = None
-    os.makedirs(f'results/{prob_type}', exist_ok=True)
-    os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
-    #os.makedirs(f'graphs/{prob_type}', exist_ok=True)
-    ns = [10, 20, 30]
+    #os.makedirs(f'results/{prob_type}', exist_ok=True)
+    #os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
+    ns = np.array([10, 20, 30])
+    os.makedirs(f'training/{prob_type}/{ns}', exist_ok=True)
+
     instances_per_size = 100
-    replicas = 10
+    replicas = 2 #10
     cnf_files = []
     for n in ns:
         cnf_files_n = []
@@ -51,5 +51,5 @@ if __name__ == '__main__':
     plt.clf()'''
 
     #Standard PT
-    solver = Solver_PT(ns, cnf_files, prob_type, simple, replicas, batch=instances_per_size)
-    solver.run(max_evals=10)
+    solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, batch=instances_per_size)
+    solver.run(max_evals=2) #100

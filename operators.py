@@ -172,7 +172,10 @@ class OR(nn.Module):
         self.xl.grad.data += dxl
         self.xs.grad.data += dxs
 
-        return C
+        if self.simple:
+            return C
+        else:
+            return C, G, R, self.xl, self.xs
 
     def calc_C(self, v): ###only valid for SAT problems (not XORSAT)
         batch0 = v.shape[0]

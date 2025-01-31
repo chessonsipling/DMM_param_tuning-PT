@@ -14,7 +14,7 @@ import sys
 
 
 def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
-    max_step = int(1e8)
+    max_step = int(1e7)
     avalanche_subprocesses = 5
     avalanche_minibatch = int(np.ceil(batch / avalanche_subprocesses))
     pool = mp.Pool(avalanche_subprocesses)
@@ -25,11 +25,13 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
 
     spin_traj = []
     time_traj = []
+    v_traj = []
     xl_traj = []
     xs_traj = []
     C_traj = []
     G_traj = []
     R_traj = []
+    dt_traj = []
     for n in ns:
         files = []
         for instance_num in range(batch):
@@ -41,31 +43,33 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
                 file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{instance_num:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{instance_num:04d}_XORgates.cnf'
             files.append(file)
         dmm = DMM(files, simple, batch=batch, param=param, eqn_choice=eqn_choice)
-        save_steps = 100
-        transient = 10
+        save_steps = 5000
+        transient = 0
         # max_step = int(n ** 4 / 100)
         # max_step = save_steps + transient
         if simple:
-            is_solved, solved_step, unsat_moments, step = \
+            is_solved, solved_step, unsat_moments, spin_traj_n, time_traj_n, step = \
                 run_dmm(dmm, max_step, simple, save_steps, transient, break_threshold=0.5)
         else:
-            is_solved, solved_step, unsat_moments, spin_traj_n, time_traj_n, xl_traj_n, xs_traj_n, C_traj_n, G_traj_n, R_traj_n, step = \
+            is_solved, solved_step, unsat_moments, spin_traj_n, time_traj_n, v_traj_n, xl_traj_n, xs_traj_n, C_traj_n, G_traj_n, R_traj_n, dt_traj_n, step = \
                 run_dmm(dmm, max_step, simple, save_steps, transient, break_threshold=0.5)
             spin_traj.append(spin_traj_n)
             time_traj.append(time_traj_n)
+            v_traj.append(v_traj_n)
             xl_traj.append(xl_traj_n)
             xs_traj.append(xs_traj_n)
             C_traj.append(C_traj_n)
             G_traj.append(G_traj_n)
             R_traj.append(R_traj_n)
+            dt_traj.append(dt_traj_n)
         solved_step[~is_solved] = max_step
         n_solved = is_solved.sum()
         median_step = np.median(solved_step.cpu().numpy()) if n_solved > dmm.batch // 2 \
             else step * (dmm.batch + 1) / (2 * n_solved + 1)
         # cluster_size, out_of_memory_flag = avalanche_analysis(spin_traj, time_traj, dmm.edges_var)
-        '''cluster_size, out_of_memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var, pool, #<<<only needed for avalanche extraction
+        cluster_size, out_of_memory_flag = avalanche_analysis_mp(spin_traj_n, time_traj_n, dmm.edges_var, pool,
                                                                  avalanche_minibatch, avalanche_subprocesses)
-        avalanche_stats = avalanche_size_distribution(cluster_size, f'/Benchmark/{ns}/{name}_{n}')
+        avalanche_stats = avalanche_size_distribution(cluster_size, f'results/{prob_type}/Benchmark/{ns}/{name}_{n}')
         stats = {
             'n': n,
             'is_solved': is_solved,
@@ -74,13 +78,14 @@ def param_scaling(param, name, eqn_choice, prob_type, batch, ns, simple):
             'unsat_moments': unsat_moments,
             'avalanche_stats': avalanche_stats
         }
-        pickle.dump(stats, open(f'results/{prob_type}/Benchmark/{ns}/stats_{n}_{name}.pkl', 'wb'))''' #<<<only needed for avalanche extraction
+        pickle.dump(stats, open(f'results/{prob_type}/Benchmark/{ns}/stats_{n}_{name}.pkl', 'wb'))
+
         with open(f'results/{prob_type}/Benchmark/{ns}/steps_{name}.txt', 'a') as f:
             f.write(f'{n} {median_step}\n')
         print(f'N = {n} Done')
 
     if not simple:
-        return spin_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj
+        return spin_traj, time_traj, v_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, dt_traj
 
 
 eqn_choice = 'sean_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
@@ -90,44 +95,34 @@ if __name__ == '__main__':
     __spec__ = None
     mp.set_start_method('spawn', force=True)
 
-    #3SAT
-    params = [{'alpha_by_beta': 0.21055781705776788,
-                'beta': 25.320478829230993,
-                'gamma': 0.03645442968658233,
-                'delta_by_gamma': 0.6198511183975558,
-                'zeta': 5.40766697229591e-05,
-                'dt_0': 0.2443282098029479,
-                'lr': 1.0,
-                'alpha_inc': 0}]
-    
-    #3R3X
-    '''params = [{'alpha_by_beta': 0.04606640828510138,
-                'beta': 17.03266964243298,
-                'gamma': 0.07929160736413496,
-                'delta_by_gamma': 0.2898387826468161,
-                'zeta': 0.000633104143162844,
-                'dt_0': 1.0, #???
-                'lr': 1.0,
-                'alpha_inc': 0}]'''
-
     simple = False
     batch = 100
-    ns = [10, 20, 30] #[10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000] #3SAT
-    #ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200] #3R3X
+    ns = np.array([10, 20, 30]) #np.array([10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000]) #3SAT
+    #ns = np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]) #3R3X
+
+    with open(f'parameters/{prob_type}/{ns}/optimal_param_{ns}.json', 'r') as f:
+        all_params = json.load(f)
+    params = [{'alpha_by_beta': all_params['alpha_by_beta'],
+                'beta': all_params['beta'],
+                'gamma': all_params['gamma'],
+                'delta_by_gamma': all_params['delta_by_gamma'],
+                'zeta': all_params['zeta'],
+                'dt_0': all_params['dt_0'],
+                'lr': all_params['lr'],
+                'alpha_inc': all_params['alpha_inc']}]
+
     for i, param_i in enumerate(params):
         result_dir = f'results/{prob_type}/Benchmark/{ns}'
-        graph_dir = f'graphs/{prob_type}/Benchmark/{ns}'
         os.makedirs(result_dir, exist_ok=True)
-        #os.makedirs(graph_dir, exist_ok=True)
 
         if simple:
             param_scaling(param_i, str(i), eqn_choice, prob_type, batch, ns, simple)
         else:
-            spin_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj = param_scaling(param_i, str(i), eqn_choice, prob_type, batch, ns, simple)
+            spin_traj, time_traj, v_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, dt_traj = param_scaling(param_i, str(i), eqn_choice, prob_type, batch, ns, simple)
 
     if not simple:
         for i in range(len(ns)): #iterate over variable number, could be up to i in range(len(ns))
-            steps = np.array(list(range(len(spin_traj[i]))))
+            #steps = np.array(list(range(len(spin_traj[i]))))
 
             '''total_active_memories = 0
             for j in range(batch):
@@ -143,12 +138,13 @@ if __name__ == '__main__':
                 f.write(f'{ns[i]} {total_active_memories}\n')
             print(f'Active Memories: {total_active_memories} out of {ns[i]}; {total_active_memories / (batch* int(ns[i]))}')'''
 
-            for j in range(5): #iterate over batch, could be up to j in range(batch)
+            time_traj_to_plot = time_traj[i][0]
+            for j in range(3): #iterate over batch, could be up to j in range(batch)
                 for k in range(10): #iterate over v, could be up to k in range(len(spin_traj[i][0][j]))
-                    spin_traj_to_plot = [element[j][k] for element in spin_traj[i]] #n, step, batch, v/xl/xs
-                    #plt.plot(steps, spin_traj_to_plot, label=f'{k}')
-                    plt.plot(steps, spin_traj_to_plot)
-                plt.xlabel('Steps')
+                    v_traj_to_plot = [element[j][k] for element in v_traj[i]] #n, step, batch, v/xl/xs
+                    #plt.plot(time_traj_to_plot, spin_traj_to_plot, label=f'{k}')
+                    plt.plot(time_traj_to_plot, v_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Voltages')
                 #plt.legend()
                 plt.tight_layout()
@@ -157,9 +153,9 @@ if __name__ == '__main__':
 
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xl_traj_to_plot = [element[j][k] for element in xl_traj[i]]
-                    #plt.plot(steps, xl_traj_to_plot, label=f'{k}')
-                    plt.plot(steps, xl_traj_to_plot)
-                plt.xlabel('Steps')
+                    #plt.plot(time_traj_to_plot, xl_traj_to_plot, label=f'{k}')
+                    plt.plot(time_traj_to_plot, xl_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Long Term Memories')
                 #plt.legend()
                 plt.tight_layout()
@@ -168,9 +164,9 @@ if __name__ == '__main__':
 
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     xs_traj_to_plot = [element[j][k] for element in xs_traj[i]]
-                    #plt.plot(steps, xs_traj_to_plot, label=f'{k}')
-                    plt.plot(steps, xs_traj_to_plot)
-                plt.xlabel('Steps')
+                    #plt.plot(time_traj_to_plot, xs_traj_to_plot, label=f'{k}')
+                    plt.plot(time_traj_to_plot, xs_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Short Term Memories')
                 #plt.legend()
                 plt.tight_layout()
@@ -179,9 +175,9 @@ if __name__ == '__main__':
 
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     C_traj_to_plot = [element[j][k] for element in C_traj[i]]
-                    #plt.plot(steps, C_traj_to_plot, label=f'{k}')
-                    plt.plot(steps, C_traj_to_plot)
-                plt.xlabel('Steps')
+                    #plt.plot(time_traj_to_plot, C_traj_to_plot, label=f'{k}')
+                    plt.plot(time_traj_to_plot, C_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Clause Functions')
                 #plt.legend()
                 plt.tight_layout()
@@ -191,9 +187,9 @@ if __name__ == '__main__':
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     for l in range(3): #iterates over 3 voltages in each clause
                         G_traj_to_plot = [element[j][k][l] for element in G_traj[i]]
-                        #plt.plot(steps, G_traj_to_plot, label=f'{k}, {l}')
-                        plt.plot(steps, G_traj_to_plot)
-                plt.xlabel('Steps')
+                        #plt.plot(time_traj_to_plot, G_traj_to_plot, label=f'{k}, {l}')
+                        plt.plot(time_traj_to_plot, G_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Gradient Terms')
                 #plt.legend(ncol=3)
                 plt.tight_layout()
@@ -203,30 +199,22 @@ if __name__ == '__main__':
                 for k in range(10): #iterate over n, could be up to k in range(ns[i])
                     for l in range(3): #iterates over 3 voltages in each clause
                         R_traj_to_plot = [element[j][k][l] for element in R_traj[i]]
-                        #plt.plot(steps, R_traj_to_plot, label=f'{k}, {l}')
-                        plt.plot(steps, R_traj_to_plot)
-                plt.xlabel('Steps')
+                        #plt.plot(time_traj_to_plot, R_traj_to_plot, label=f'{k}, {l}')
+                        plt.plot(time_traj_to_plot, R_traj_to_plot)
+                plt.xlabel('Time')
                 plt.ylabel('Rigidity Terms')
                 #plt.legend(ncol=3)
                 plt.tight_layout()
                 plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_R.png')
                 plt.clf()
 
-        for n in ns:
-            dt_file = open(f'results/{prob_type}/Benchmark/n{n}_dt.txt', 'r')
-            dt_file_output = dt_file.readlines()
-            dts = np.array((np.float_([element.split(', ')[:-1] for element in dt_file_output])))
-            #print(dts)
-            for i in range(2): #could be up to i in range(batch)
-                dt = np.array([element[i] for element in dts])
-                #print(dt)
-                steps = np.array(list(range(len(dt))))
-                plt.plot(steps, dt)
+                dt_traj_to_plot = [element[0] for element in dt_traj[i]]
+                #plt.plot(time_traj_to_plot, dt_traj_to_plot, label=f'{k}')
+                plt.plot(time_traj_to_plot, dt_traj_to_plot)
                 plt.axhline(0.1, color='red', linestyle='dashed')
-                plt.ylim(0, min(10, max(dt)))
-                plt.xlabel('Steps')
+                plt.ylim(0, min(10, max(dt_traj_to_plot)))
+                plt.xlabel('Time')
                 plt.ylabel('dt')
                 plt.tight_layout()
-                plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{n}_batch{i}_dt.png')
+                plt.savefig(f'results/{prob_type}/Benchmark/{ns}/n{ns[i]}_batch{j}_dt.png')
                 plt.clf()
-                print('Instance ' + str(i+1) + ' dt plotted!')

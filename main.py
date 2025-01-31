@@ -7,13 +7,12 @@ import sys
 
 eqn_choice = 'sean_choice' #sys.argv[1] #eqn_choice can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
-simple = True
 
 if __name__ == '__main__':
     __spec__ = None
-    os.makedirs(f'results/{prob_type}', exist_ok=True)
-    os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
-    #os.makedirs(f'graphs/{prob_type}', exist_ok=True)
+    #os.makedirs(f'results/{prob_type}', exist_ok=True)
+    #os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
+    os.makedirs(f'training/{prob_type}', exist_ok=True)
     ns = [10, 20, 30]
     instances_per_size = 100
     cnf_files = []
@@ -28,5 +27,5 @@ if __name__ == '__main__':
                 file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}_XORgates.cnf'
             cnf_files_n.append(file)
         cnf_files.append(cnf_files_n)
-    solver = Solver(ns, cnf_files, prob_type, simple)
+    solver = Solver(ns, cnf_files, prob_type, True)
     solver.run(max_evals=1000)

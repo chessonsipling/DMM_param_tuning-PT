@@ -6,3 +6,5 @@ results/
 ckpts/
 graphs_colossus/
 test.py
+training/
+parameters/

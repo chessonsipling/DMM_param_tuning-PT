@@ -42,7 +42,7 @@ class Solver_PT:
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
             # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
-            self.steps = int(2e3) #max number of allowable timesteps (arbitrary units, NOT necessarily of width dt) after transient
+            self.steps = int(5e3) #max number of allowable timesteps (arbitrary units, NOT necessarily of width dt) after transient
         else:
             self.steps = steps
         self.best_param = None
@@ -137,7 +137,7 @@ class Solver_PT:
         cluster_sizes, memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var,
                                                            self.pool_avalanches, self.avalanche_minibatch,
                                                            self.avalanche_subprocesses, time_window)
-        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'{dmm.n_var}')
+        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.ns}/{dmm.n_var}')
         if memory_flag:
             self.steps = self.steps // 2
         return avalanche_stats
@@ -214,13 +214,14 @@ class Solver_PT:
         for i, n in enumerate(self.ns):
             # cnf_file = self.cnf_files[i][self.file_pointer]
             dmm = DMM(self.cnf_files[i], simple=self.simple, batch=self.batch, param=param, eqn_choice=eqn_choice, prob_type=self.prob_type)
-            transient = 1000
+            transient = 100
             break_threshold = 0.5
             if self.simple:
-                is_solved, solved_step, unsat_moments, current_step = run_dmm(dmm, self.steps+transient, self.simple, self.steps, transient, break_threshold)
-            else:
                 is_solved, solved_step, unsat_moments, spin_traj, time_traj, current_step = \
-                    run_dmm(dmm, self.steps+transient, self.simple, self.steps, transient, break_threshold)
+                    run_dmm(dmm, self.steps+transient, self.steps, transient, break_threshold)
+            else:
+                is_solved, solved_step, unsat_moments, spin_traj, time_traj,  xl_traj, xs_traj, C_traj, G_traj, R_traj, current_step = \
+                    run_dmm(dmm, self.steps+transient, self.steps, transient, break_threshold)
             solved_step[~is_solved] = current_step
             #print('Solved Step: ' + str(solved_step))
             #print('Current Step: ' + str(current_step))
@@ -281,7 +282,7 @@ class Solver_PT:
             'avalanche_stats': avalanche_stats,
             'metric': metric,
         }
-        with open(f'results/{self.prob_type}/stats_{self.ns}.p', 'ab') as f:
+        with open(f'training/{self.prob_type}/{self.ns}/stats_{self.ns}.p', 'ab') as f:
             pickle.dump(stats, f)
         self.file_pointer += 1
         if self.file_pointer >= len(self.cnf_files[0]):
