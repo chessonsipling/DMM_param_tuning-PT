@@ -17,7 +17,7 @@ mp.set_start_method('spawn', force=True)
 
 #Initializes the Parallel Tempering (PT) device used to optimize parameters
 class Solver_PT:
-    def __init__(self, ns, cnf_files, prob_type, simple, replicas, big_ns, flattened_big_ns, size_num, steps=None, batch=100, lower_T=1e-1, upper_T=1e4):
+    def __init__(self, ns, cnf_files, prob_type, simple, replicas, max_step=int(1e8), steps=None, batch=100):
         self.best_eqn_choice = ''
         self.ns = np.array(ns)
         self.cnf_files = cnf_files
@@ -38,51 +38,29 @@ class Solver_PT:
         self.prob_type = prob_type
         self.simple = simple
         self.replicas = replicas
-        self.big_ns = big_ns
-        self.flattened_big_ns = flattened_big_ns
-        self.size_num = size_num
 
     #Runs the PT procedure
     def run(self, max_evals=10000):
-        if self.size_num == 0:
-            #Specifies initial parameters
-            starting_params = {'alpha_by_beta': 0.5, #0.45313481433413916,
-                               'beta': 20, #78.83050800202636,
-                               'gamma': 0.25, #0.3635604327568345,
-                               'delta_by_gamma': 0.2, #0.21883211263830715,
-                               'zeta': 0.001, #0.06294441488786634,
-                               'dt_0': 1.0,
-                               'time_window': 0.5,
-                               'lr': 1.0,
-                               'alpha_inc': 0,
-                               'jump_thrs': 0,
-                               'jump_mag': 2.1}
-        else:
-            #Extracts optimal parameters from previous PT iterations
-            with open(f'parameters/{self.prob_type}/{self.flattened_big_ns}/optimal_param_{self.big_ns[self.size_num-1]}.json', 'r') as f:
-                all_params = json.load(f)
-            starting_params = {'alpha_by_beta': all_params['alpha_by_beta'],
-                               'beta': all_params['beta'],
-                               'gamma': all_params['gamma'],
-                               'delta_by_gamma': all_params['delta_by_gamma'],
-                               'zeta': all_params['zeta'],
-                               'dt_0': all_params['dt_0'],
-                               'lr': all_params['lr'],
-                               'time_window': all_params['time_window'],
-                               'alpha_inc': all_params['alpha_inc'],
-                               'jump_thrs': all_params['jump_thrs'],
-                               'jump_mag': all_params['jump_mag']}
-        param_mask = [[0, 1], #fix by setting to [starting_params['alpha_by_beta'], starting_params['alpha_by_beta']]
-                      [1e-5, 1e2], #fix by setting to [starting_params['beta'], starting_params['beta']]
-                      [0, 0.5], #fix by setting to [starting_params['gamma'], starting_params['gamma']]
-                      [0, 1], #fix by setting to [starting_params['delta_by_gamma'], starting_params['delta_by_gamma']]
-                      [1e-5, 1e1], #fix by setting to [starting_params['zeta'], starting_params['zeta']]
-                      [1e-2, 1], #fix by setting to [starting_params['dt_0'], starting_params['dt_0']]
-                      [1e-2, 1], #fix by setting to [starting_params['lr'], starting_params['lr']]
-                      [starting_params['time_window'], starting_params['time_window']],
-                      [starting_params['alpha_inc'], starting_params['alpha_inc']],
-                      [starting_params['jump_thrs'], starting_params['jump_thrs']],
-                      [starting_params['jump_mag'], starting_params['jump_mag']]]
+        param_mask = [[0, 1],
+                      [1e-5, 1e2],
+                      [0, 0.5],
+                      [0, 1],
+                      [1e-5, 1e1],
+                      [1e-2, 1],
+                      [1.0, 1.0],
+                      [0, 0],
+                      [0, 0],
+                      [2.1, 2.1]]
+        starting_params = {'alpha_by_beta': 0.06805874059816672,
+                           'beta': 4.850707467528604,
+                           'gamma': 0.01108894541776315,
+                           'delta_by_gamma': 0.5617086818983189,
+                           'zeta': 0.0005372553919645686,
+                           'dt_0': 1,
+                           'lr': 1.0,
+                           'alpha_inc': 0,
+                           'jump_thrs': 0,
+                           'jump_mag': 2.1} #initial values for alpha_by_beta, beta, gamma, delta_by_gamma, zeta
         current_replica_details = [self.objective(starting_params)] * self.replicas #initializes details for all replicas, which start at the same point in parameter space
         distrb_params = {'alpha_by_beta': 0.005,
                     'beta': 10,
@@ -150,7 +128,7 @@ class Solver_PT:
         cluster_sizes, memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var,
                                                            self.pool_avalanches, self.avalanche_minibatch,
                                                            self.avalanche_subprocesses, time_window)
-        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.flattened_big_ns}/{dmm.n_var}')
+        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.ns}/{dmm.n_var}')
         if memory_flag:
             self.steps = self.steps // 2
         return avalanche_stats
@@ -277,7 +255,7 @@ class Solver_PT:
             'avalanche_stats': avalanche_stats,
             'metric': metric,
         }
-        with open(f'training/{self.prob_type}/{self.flattened_big_ns}/stats_{self.ns}.p', 'ab') as f:
+        with open(f'training/{self.prob_type}/{self.ns}/stats_{self.ns}.p', 'ab') as f:
             pickle.dump(stats, f)
         self.file_pointer += 1
         if self.file_pointer >= len(self.cnf_files[0]):
