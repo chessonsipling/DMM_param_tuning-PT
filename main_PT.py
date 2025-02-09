@@ -4,6 +4,7 @@ import torch
 from solver_PT import Solver_PT
 import matplotlib.pyplot as plt
 import pandas as pd
+from data_analysis import data_analysis
 
 import sys
 
@@ -13,23 +14,28 @@ if __name__ == '__main__':
     __spec__ = None
     #os.makedirs(f'results/{prob_type}', exist_ok=True)
     #os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
-    ns = np.array([10, 20, 30])
-    os.makedirs(f'training/{prob_type}/{ns}', exist_ok=True)
+    big_ns = np.array([[10], [20], [30], [40], [50], [60], [80], [100], [120], [150], [180], [210], [250], [300], [350], [400], [450], [500], [600], [700], [900], [1100], [1300], [1500], [1700], [2000]])
+    flattened_big_ns = big_ns.flatten()
+    os.makedirs(f'training/{prob_type}/{flattened_big_ns}', exist_ok=True)
 
     instances_per_size = 100
-    replicas = 2 #10
-    cnf_files = []
-    for n in ns:
-        cnf_files_n = []
-        for i in range(instances_per_size):
-            if prob_type == '3SAT':
-                file = f'../DMM_param_tuning-main/data/p0_080/ratio_4_30/var_{n}/instances/transformed_barthel_n_{n}_r_4.300_p0_0.080_instance_{i+1:03d}.cnf'
-            elif prob_type == '3R3X':
-                file = f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{i:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{i:04d}_XORgates.cnf'
-            elif prob_type == '5R5X':
-                file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}_XORgates.cnf'
-            cnf_files_n.append(file)
-        cnf_files.append(cnf_files_n)
+    for i, ns in enumerate(big_ns):
+        replicas = 4 #int(0.05*np.average(ns) + 10)
+        cnf_files = []
+        for j, n in enumerate(ns):
+            cnf_files_n = []
+            for k in range(instances_per_size):
+                if prob_type == '3SAT':
+                    file = f'../DMM_param_tuning-main/data/p0_080/ratio_4_30/var_{n}/instances/transformed_barthel_n_{n}_r_4.300_p0_0.080_instance_{k+1:03d}.cnf'
+                elif prob_type == '3R3X':
+                    file = f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{k:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{k:04d}_XORgates.cnf'
+                elif prob_type == '5R5X':
+                    file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{k:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{j=k:04d}_XORgates.cnf'
+                cnf_files_n.append(file)
+            cnf_files.append(cnf_files_n)
+        solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, big_ns, i, batch=instances_per_size) ###
+        solver.run(max_evals=4) #int(1000/replicas))
+        data_analysis(prob_type, ns, flattened_big_ns)
 
     #<E(T)> plot generation
     #instances_per_size = 1000 (or other large number)
@@ -51,5 +57,5 @@ if __name__ == '__main__':
     plt.clf()'''
 
     #Standard PT
-    solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, batch=instances_per_size)
-    solver.run(max_evals=2) #100
+    '''solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, batch=instances_per_size)
+    solver.run(max_evals=100)'''
