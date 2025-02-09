@@ -9,13 +9,14 @@ import sys
 prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 ns = np.array([10, 20, 30])
+#ns = '[10, 20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 600, 700, 900, 1100, 1300, 1500, 1700, 2000] (param comparison)'
 
 os.makedirs(f'results/{prob_type}/Benchmark/{ns}', exist_ok=True)
 
 #Plots median TTS (in number of steps)
 folder = f'results/{prob_type}/Benchmark/{ns}'
 
-files = os.listdir(folder)
+files = sorted(os.listdir(folder))
 ns = []
 step = []
 x_fit = []
@@ -55,22 +56,25 @@ plt.close()
 
 
 #Plots different param choices alongside one another
-'''params = [r'$\beta = 10*\beta_{opt}$', 'Optimal', r'$\beta = 100*\beta_{opt}$']
-colors = ['y', 'g', 'r']
+'''params = ['Optimal', r'$\beta = 10*\beta_{opt}$', r'$\beta = 100*\beta_{opt}$', r'$\zeta = 0.1*\zeta_{opt}$', r'$\zeta = 0.01*\zeta_{opt}$', r'$\beta = 10*\beta_{opt}, dt_0=0.25$', r'$\zeta = 0.1*\zeta_{opt}, dt_0=0.25$']
 
-ax.scatter(ns[1], step[1], label=f'{params[1]}', color=colors[1])
-ax.scatter(ns[0], step[0], label=f'{params[0]}', color=colors[0])
-ax.scatter(ns[2], step[2], label=f'{params[2]}', color=colors[2])
+ax.scatter(ns[0], step[0], label=f'{params[0]}', color='g') #original
+#ax.scatter(ns[1], step[1], label=f'{params[1]}', color='y') #10*\beta_{opt}
+#ax.scatter(ns[2], step[2], label=f'{params[2]}', color='r') #100*\beta_{opt}
+ax.scatter(ns[3], step[3], label=f'{params[3]}', color='y', marker='x') #0.1*\zeta_{opt}
+#ax.scatter(ns[4], step[4], label=f'{params[4]}', color='r', marker='x') #0.01*\zeta_{opt}
+#ax.scatter(ns[5], step[5], label=f'{params[5]}', color='y', marker='*') #10*\beta_{opt}, dt_0=0.25
+ax.scatter(ns[6], step[6], label=f'{params[6]}', color='y', marker='*') #0.1*\zeta_{opt}, dt_0=0.25
 
 #ax.plot(x_fit1, y_fit1, color='r', linestyle='--')
 #ax.plot(x_fit2, y_fit2, color='g', linestyle='--')
 
-plt.legend(fontsize=18)
+plt.legend(fontsize=12, loc= 'lower right')
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel('Number of variables')
 plt.ylabel('Median steps')
-plt.savefig(f'{folder}/combined.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/zeta (dt comparison).png', dpi=300, bbox_inches='tight')
 # plt.show()
 plt.close()'''
 

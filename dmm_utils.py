@@ -186,7 +186,7 @@ def avalanche_size_distribution(cluster_sizes, name):
         # avalanche_data.append([slope, intercept, r] + quartiles.tolist())
         avalanche_data = np.array([slope, intercept, r, max_size])
 
-        fig, ax = plt.subplots()
+        '''fig, ax = plt.subplots()
         ax.scatter(bin_centers, np.log10(hist), s=10, alpha=0.5)
         ax.plot(bin_centers, slope * bin_centers + intercept, 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}')
         # ax.set_yscale('log')
@@ -194,6 +194,6 @@ def avalanche_size_distribution(cluster_sizes, name):
         ax.set_ylabel('log10 (Probability)')
         plt.savefig(f'{name}_{slope:.2f}_{intercept:.2f}_{r:.2f}.png',
                     dpi=72, bbox_inches='tight')
-        plt.close()
+        plt.close()'''
 
     return avalanche_data
