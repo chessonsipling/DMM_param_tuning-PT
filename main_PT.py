@@ -14,13 +14,17 @@ if __name__ == '__main__':
     __spec__ = None
     #os.makedirs(f'results/{prob_type}', exist_ok=True)
     #os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
-    big_ns = np.array([[10], [20], [30], [40], [50], [60], [80], [100], [120], [150], [180], [210], [250], [300], [350], [400], [450], [500], [600], [700], [900], [1100], [1300], [1500], [1700], [2000]])
-    flattened_big_ns = big_ns.flatten()
+    #big_ns = np.array([[10], [20], [30], [40], [50], [60], [80], [100], [120], [150], [180], [210], [250], [300], [350], [400], [450], [500], [600], [700], [900], [1100], [1300], [1500], [1700], [2000]])
+    big_ns = np.array([[10], [20], [30], [40], [50], [60], [80], [100], [120], [150], [180], [210], [250], [300], [350], [400], [450], [500], [600], [700], [900]])
+    #big_ns = np.array([[10], [20], [30]])
+    tag = '_more_good_params_tuned'
+
+    flattened_big_ns = str(big_ns.flatten().tolist()) + tag
     os.makedirs(f'training/{prob_type}/{flattened_big_ns}', exist_ok=True)
 
     instances_per_size = 100
     for i, ns in enumerate(big_ns):
-        replicas = 4 #int(0.05*np.average(ns) + 10)
+        replicas = int(0.05*np.average(ns) + 10)
         cnf_files = []
         for j, n in enumerate(ns):
             cnf_files_n = []
@@ -33,8 +37,8 @@ if __name__ == '__main__':
                     file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{k:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{j=k:04d}_XORgates.cnf'
                 cnf_files_n.append(file)
             cnf_files.append(cnf_files_n)
-        solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, big_ns, i, batch=instances_per_size) ###
-        solver.run(max_evals=4) #int(1000/replicas))
+        solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, big_ns, flattened_big_ns, i, batch=instances_per_size) ###
+        solver.run(max_evals=int(100/replicas))
         data_analysis(prob_type, ns, flattened_big_ns)
 
     #<E(T)> plot generation

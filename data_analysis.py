@@ -178,7 +178,8 @@ def data_analysis(prob_type, ns, flattened_big_ns):
 
 
 '''prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
-ns = np.array([10])
-flattened_big_ns = np.array([10, 20, 30])
-
-data_analysis(prob_type, ns, flattened_big_ns)'''
+big_ns = np.array([[10], [20], [30], [40], [50], [60], [80], [100], [120], [150], [180], [210], [250], [300], [350], [400], [450], [500], [600], [700], [900]])
+tag = '_1.5_1.5'
+flattened_big_ns = str(big_ns.flatten().tolist()) + tag
+for ns in big_ns:
+    data_analysis(prob_type, ns, flattened_big_ns)'''
