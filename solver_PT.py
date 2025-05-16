@@ -29,7 +29,7 @@ mp.set_start_method('spawn', force=True)
 
 
 class Solver_PT:
-    def __init__(self, ns, cnf_files, prob_type, simple, replicas, big_ns, size_num, max_step=int(1e8), steps=None, batch=100):
+    def __init__(self, ns, cnf_files, prob_type, simple, replicas, big_ns, flattened_big_ns, size_num, max_step=int(1e8), steps=None, batch=100):
         self.best_eqn_choice = ''
         self.max_step = max_step
         self.ns = np.array(ns)
@@ -51,32 +51,24 @@ class Solver_PT:
         self.simple = simple
         self.replicas = replicas
         self.big_ns = big_ns
+        self.flattened_big_ns = flattened_big_ns
         self.size_num = size_num
 
     def run(self, max_evals=10000):
-        param_mask = [[0.45313481433413916, 0.45313481433413916], #[0, 1] FIX
-                      [78.83050800202636, 78.83050800202636], #[1e-5, 1e2] FIX
-                      [0.3635604327568345, 0.3635604327568345], #[0, 0.5] FIX
-                      [0.21883211263830715, 0.21883211263830715], #[0, 1] FIX
-                      [0.06294441488786634, 0.06294441488786634], #[1e-5, 1e1] FIX
-                      [1e-2, 1], #[1e-2, 1]
-                      [1.0, 1.0],
-                      [0, 0],
-                      [0, 0],
-                      [2.1, 2.1]]
         if self.size_num == 0:
             starting_params = {'alpha_by_beta': 0.45313481433413916,
-                               'beta': 78.83050800202636, #788.3050800202636
+                               'beta': 1.5*78.83050800202636,
                                'gamma': 0.3635604327568345,
                                'delta_by_gamma': 0.21883211263830715,
-                               'zeta': 0.06294441488786634, #0.006294441488786634
-                               'dt_0': 1,
+                               'zeta': 1.5*0.06294441488786634,
+                               'dt_0': 0.03,
+                               'time_window': 0.5,
                                'lr': 1.0,
                                'alpha_inc': 0,
                                'jump_thrs': 0,
                                'jump_mag': 2.1} #initial values for alpha_by_beta, beta, gamma, delta_by_gamma, zeta
         else:
-            with open(f'parameters/{self.prob_type}/{self.big_ns.flatten()}/optimal_param_{self.big_ns[self.size_num-1]}.json', 'r') as f:
+            with open(f'parameters/{self.prob_type}/{self.flattened_big_ns}/optimal_param_{self.big_ns[self.size_num-1]}.json', 'r') as f:
                 all_params = json.load(f)
             starting_params = {'alpha_by_beta': all_params['alpha_by_beta'],
                                'beta': all_params['beta'],
@@ -85,26 +77,40 @@ class Solver_PT:
                                'zeta': all_params['zeta'],
                                'dt_0': all_params['dt_0'],
                                'lr': all_params['lr'],
+                               'time_window': all_params['time_window'],
                                'alpha_inc': all_params['alpha_inc'],
                                'jump_thrs': all_params['jump_thrs'],
                                'jump_mag': all_params['jump_mag']}
+        param_mask = [[starting_params['alpha_by_beta'], starting_params['alpha_by_beta']], #[0, 1] FIX
+                      [starting_params['beta'], starting_params['beta']], #[1e-5, 1e2] FIX
+                      [starting_params['gamma'], starting_params['gamma']], #[0, 0.5] FIX
+                      [starting_params['delta_by_gamma'], starting_params['delta_by_gamma']], #[0, 1] FIX
+                      [starting_params['zeta'], starting_params['zeta']], #[1e-5, 1e1] FIX
+                      [1e-2, 1], #[1e-2, 1] FIX
+                      [1e-2, 1], #[1e-2, 1] FIX
+                      [1.0, 1.0],
+                      [0, 0],
+                      [0, 0],
+                      [2.1, 2.1]]
         current_replica_details = [self.objective(starting_params)] * self.replicas #initializes details for all replicas, which start at the same point in parameter space
-        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0.1, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0.003, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0.000001, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0]
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
+        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0.000001, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
         distrb_params = {'alpha_by_beta': 0.005,
                     'beta': 10,
                     'gamma': 0.003,
                     'delta_by_gamma': 0.003,
                     'zeta': 10,
-                    'dt_0': 3} #for draws from mixed gaussian and scale-free distributions
+                    'dt_0': 3,
+                    'time_window': 3} #for draws from mixed gaussian and scale-free distributions
         inverse_temps = np.geomspace(1e-1, 1e4, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically ###
         ###inverse_temps = np.geomspace(1e-2, 1e7, max_evals) #for <E(T)> plot generation (simulated annealing) ###
         for i in range(max_evals):
@@ -117,7 +123,7 @@ class Solver_PT:
                 for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & scale-free distributions
                     if key == 'alpha_by_beta' or key == 'gamma' or key == 'delta_by_gamma': #draw from gaussians
                         new_param_values[k] = np.random.normal(current_replica_details[j]['param'][key], np.sqrt(distrb_params[key]))
-                    elif key == 'beta' or key == 'zeta' or key == 'dt_0': #draw from log-normals
+                    elif key == 'beta' or key == 'zeta' or key == 'dt_0' or key == 'time_window': #draw from log-normals
                         new_param_values[k] = np.random.lognormal(np.log(current_replica_details[j]['param'][key]), np.log(distrb_params[key]))
                 new_param_values = [new_param_values[k] if (new_param_values[k] >= param_mask[k][0] and new_param_values[k] <= param_mask[k][1])
                                   else list(current_replica_details[j]['param'].values())[k] for k in range(len(new_param_values))] #verifies that params are within physical bounds
@@ -149,11 +155,11 @@ class Solver_PT:
         print(f'Optimal params: {self.best_param}')
         print(f'Best metric: {self.best_metric}')
 
-    def avalanche_analysis(self, dmm, spin_traj, time_traj, time_window=0.5):
+    def avalanche_analysis(self, dmm, spin_traj, time_traj, time_window):
         cluster_sizes, memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var,
                                                            self.pool_avalanches, self.avalanche_minibatch,
                                                            self.avalanche_subprocesses, time_window)
-        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.big_ns.flatten()}/{dmm.n_var}')
+        avalanche_stats = avalanche_size_distribution(cluster_sizes, f'training/{self.prob_type}/{self.flattened_big_ns}/{dmm.n_var}')
         if memory_flag:
             self.steps = self.steps // 2
         return avalanche_stats
@@ -164,7 +170,7 @@ class Solver_PT:
         #LRO Contribution
         lro_metric = 0
         # slope, intercept, r, avl_max = stats.transpose()
-        target_stats = np.concatenate([np.tile(np.array([-1.5, 0, -0.98]), (len(self.ns), 1)),
+        '''target_stats = np.concatenate([np.tile(np.array([-1.5, 0, -0.98]), (len(self.ns), 1)),
                                        np.log10(self.ns).reshape(-1, 1)], axis=1)
         target_std = np.tile(np.array([1, 0.5, 0.02, 0.2]), (len(self.ns), 1))
         lro_metric = np.abs((avalanche_stats - target_stats) / (target_std)) - 0.5
@@ -172,7 +178,7 @@ class Solver_PT:
         lro_metric = np.exp(-np.sum(lro_metric ** 2, axis=1) / 2)
         lro_metric = np.sum(1 - lro_metric)
         lro_metric += 4 * target_stats[:, 0].std()
-        print('LRO contribution: ' + str(lro_metric))
+        print('LRO contribution: ' + str(lro_metric))'''
 
         #UnSAT Contribution
         unsat_metric = 0
@@ -195,7 +201,7 @@ class Solver_PT:
             tts_kurt = tts_stats[i][3]
             tts_metric += 1*tts_mean# + 1*(np.abs(tts_mean/tts_var - 9/(tts_skewness**2)) + np.abs(tts_mean/tts_var - 15/tts_kurt))'''
 
-        '''instances_solved = [len(tts_stats[i]) for i in range(len(tts_stats))]
+        instances_solved = [len(tts_stats[i]) for i in range(len(tts_stats))]
         print('Instances Solved: ' + str(instances_solved))
         best_percentile = min(instances_solved)
         #print('Best Percentile: ' + str(best_percentile))
@@ -216,7 +222,7 @@ class Solver_PT:
             #print('TTS Slope Lower: ' + str(tts_slope_lower))
             tts_concavity = tts_slope_upper - tts_slope_lower
             print('TTS Concavity: ' + str(tts_concavity))
-            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity'''
+            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity
 
         metric += lro_metric + unsat_metric + tts_metric
         print('Total metric: ' + str(metric))
@@ -279,7 +285,7 @@ class Solver_PT:
             unsolved_stats.append(unsat_moments)
 
             #Avalanche Stats
-            avalanche_stat_i = self.avalanche_analysis(dmm, spin_traj, time_traj)
+            avalanche_stat_i = self.avalanche_analysis(dmm, spin_traj, time_traj, param['time_window'])
             avalanche_stats.append(avalanche_stat_i)
 
         unsolved_stats = np.array(unsolved_stats)
@@ -298,7 +304,7 @@ class Solver_PT:
             'avalanche_stats': avalanche_stats,
             'metric': metric,
         }
-        with open(f'training/{self.prob_type}/{self.big_ns.flatten()}/stats_{self.ns}.p', 'ab') as f:
+        with open(f'training/{self.prob_type}/{self.flattened_big_ns}/stats_{self.ns}.p', 'ab') as f:
             pickle.dump(stats, f)
         self.file_pointer += 1
         if self.file_pointer >= len(self.cnf_files[0]):

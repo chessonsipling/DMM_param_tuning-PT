@@ -103,7 +103,7 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
         return is_solved, solved_step, unsat_moments, spin_traj, time_traj, v_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, dt_traj, step
 
 @torch.no_grad()
-def avalanche_analysis(spin_traj, time_traj, edges, time_window=0.5):
+def avalanche_analysis(spin_traj, time_traj, edges, time_window):
     batch = spin_traj.shape[0]
     cluster_sizes = []
     memory_flag = False
@@ -130,10 +130,13 @@ def avalanche_analysis(spin_traj, time_traj, edges, time_window=0.5):
     else:
         cluster_sizes = torch.cat(cluster_sizes)
         cluster_sizes = cluster_sizes[cluster_sizes > 0].cpu().numpy()
+        #For anti-instanton extraction
+        '''return cluster_sizes, label, memory_flag'''
+        #For usual avalanche analysis
         return cluster_sizes, memory_flag
 
 
-def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subprocesses, time_window=0.5):
+def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subprocesses, time_window):
     spin_traj_minibatch = [spin_traj[i * minibatch:(i + 1) * minibatch] for i in range(subprocesses)]
     time_traj_minibatch = [time_traj[i * minibatch:(i + 1) * minibatch] for i in range(subprocesses)]
     edges_minibatch = [edges[i * minibatch:(i + 1) * minibatch] for i in range(subprocesses)]
@@ -144,6 +147,26 @@ def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subproce
 
     cluster_sizes = []
     out_of_memory_flag = False
+    #For anti-instanton extraction
+    '''anti_instantons = 0 #keeps track of number of (temporally) adjascent, identical avalanches (i.e. consisting of the same set of flipping voltages)
+    for i, p_avalanche_i in enumerate(p_avalanches):
+        cluster_size, label, memory_flag = p_avalanche_i.get()
+        cluster_sizes.append(cluster_size)
+        set_of_flips_last = []
+        for j in range(int(torch.max(label))): #j specifies a particular avalanche
+            set_of_flips_j = []
+            for n in range(len(label)): #n \in [0, ..., N] specifies a voltage
+                if j in label[n]:
+                    set_of_flips_j.append(n)
+            if set_of_flips_j == set_of_flips_last:
+                anti_instantons += 1
+            #set_of_flips_all.append(set_of_flips_j) ###
+            set_of_flips_last = set_of_flips_j
+        if memory_flag:
+            out_of_memory_flag = True
+    cluster_sizes = np.concatenate(cluster_sizes)
+    return cluster_sizes, anti_instantons, out_of_memory_flag'''
+    #For usual avalanche analysis
     for p_avalanche_i in p_avalanches:
         cluster_size, memory_flag = p_avalanche_i.get()
         cluster_sizes.append(cluster_size)
@@ -182,18 +205,29 @@ def avalanche_size_distribution(cluster_sizes, name):
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         bin_centers = bin_centers[hist > 0]
         hist = hist[hist > 0]
-        slope, intercept, r, p, se = linregress(bin_centers, np.log10(hist))
+        try:
+            slope, intercept, r, p, se = linregress(bin_centers[1:-8], np.log10(hist)[1:-8])
+        except:
+            slope, intercept, r, p, se = 0.0, 0.0, 0.0, None, None
         # avalanche_data.append([slope, intercept, r] + quartiles.tolist())
         avalanche_data = np.array([slope, intercept, r, max_size])
 
-        '''fig, ax = plt.subplots()
-        ax.scatter(bin_centers, np.log10(hist), s=10, alpha=0.5)
-        ax.plot(bin_centers, slope * bin_centers + intercept, 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}')
-        # ax.set_yscale('log')
-        ax.set_xlabel('log10 (cluster size)')
-        ax.set_ylabel('log10 (Probability)')
+        fig, ax = plt.subplots(figsize=(3.0, 1.75))
+        ax.scatter(10**(bin_centers), hist, s=20, color='blue')
+        '''try:
+            ax.plot(10**(bin_centers), 10**(slope * bin_centers + intercept), 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}', color='red', linestyle='--')
+        except:
+            pass'''
+        #plt.legend(fontsize=16, loc= 'upper right')
+        ax.set_xscale('log')
+        ax.set_xlim(0.9, 110)
+        ax.set_yscale('log')
+        ax.xaxis.label.set_size(12)
+        ax.yaxis.label.set_size(12)
+        ax.set_xlabel(r'Cluster Size $s$')
+        ax.set_ylabel(r'$P(s)$')
         plt.savefig(f'{name}_{slope:.2f}_{intercept:.2f}_{r:.2f}.png',
-                    dpi=72, bbox_inches='tight')
-        plt.close()'''
+                    dpi=300, bbox_inches='tight')
+        plt.close()
 
     return avalanche_data

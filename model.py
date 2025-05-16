@@ -248,7 +248,7 @@ class DMM(nn.Module):
 
         #Sean's adaptive time step
         max_dv = torch.max(torch.abs(self.v.grad), dim=1)[0] + 1e-6
-        dt = (self.param['dt_0'] / max_dv).clamp(1e-3, 0.1) #explicitly bounds dt (mostly to prevent it from becoming too large)
+        dt = (self.param['dt_0'] / max_dv).clamp(1e-5, 0.1) #explicitly bounds dt (mostly to prevent it from becoming too large)
         for param in self.parameters():
             param.grad.data *= dt.view((-1, ) + (1, )*(len(param.shape)-1))
         if self.simple:
