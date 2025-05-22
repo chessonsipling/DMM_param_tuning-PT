@@ -1,17 +1,12 @@
-import os
 import pickle
-import time
 import numpy as np
 import torch
 import torch.multiprocessing as mp
 from model import DMM
-from scipy.stats import linregress, skew, kurtosis
-from tqdm import trange
+from scipy.stats import skew, kurtosis
 import json
-from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
+from hyperopt import STATUS_OK
 from dmm_utils import run_dmm, avalanche_analysis_mp, avalanche_size_distribution
-import math
-#from benchmark import param_scaling
 
 
 torch.set_default_tensor_type(torch.cuda.FloatTensor
@@ -20,28 +15,21 @@ torch.set_default_tensor_type(torch.cuda.FloatTensor
 mp.set_start_method('spawn', force=True)
 
 
-# def prob_explore(pool_size):
-#     return max(np.exp(-(pool_size - 5) / 10), 0.1)
-
-
-# def prob_explore(min_loss):
-#     return max(np.exp(2 * min_loss + 2), 0.1)
-
-
+#Initializes the Parallel Tempering (PT) device used to optimize parameters
 class Solver_PT:
-    def __init__(self, ns, cnf_files, prob_type, simple, replicas, big_ns, flattened_big_ns, size_num, max_step=int(1e8), steps=None, batch=100):
+    def __init__(self, ns, cnf_files, prob_type, simple, replicas, big_ns, flattened_big_ns, size_num, steps=None, batch=100, lower_T=1e-1, upper_T=1e4):
         self.best_eqn_choice = ''
-        self.max_step = max_step
         self.ns = np.array(ns)
         self.cnf_files = cnf_files
         # self.dmm = DMM(self.cnf_files[0], param=self.param_0)
         self.file_pointer = 0
         self.avalanche_subprocesses = 10
         self.batch = batch
+        self.lower_T = lower_T
+        self.upper_T = upper_T
         self.avalanche_minibatch = int(np.ceil(self.batch / self.avalanche_subprocesses))
         self.pool_avalanches = mp.Pool(self.avalanche_subprocesses)
         if steps is None:
-            # self.steps = int(np.ceil(100000 / np.sqrt(self.dmm.n_clause)))
             self.steps = int(5e3) #max number of allowable timesteps (arbitrary units, NOT necessarily of width dt) after transient
         else:
             self.steps = steps
@@ -54,20 +42,23 @@ class Solver_PT:
         self.flattened_big_ns = flattened_big_ns
         self.size_num = size_num
 
+    #Runs the PT procedure
     def run(self, max_evals=10000):
         if self.size_num == 0:
-            starting_params = {'alpha_by_beta': 0.45313481433413916,
-                               'beta': 1.5*78.83050800202636,
-                               'gamma': 0.3635604327568345,
-                               'delta_by_gamma': 0.21883211263830715,
-                               'zeta': 1.5*0.06294441488786634,
-                               'dt_0': 0.03,
+            #Specifies initial parameters
+            starting_params = {'alpha_by_beta': 0.5, #0.45313481433413916,
+                               'beta': 20, #78.83050800202636,
+                               'gamma': 0.25, #0.3635604327568345,
+                               'delta_by_gamma': 0.2, #0.21883211263830715,
+                               'zeta': 0.001, #0.06294441488786634,
+                               'dt_0': 1.0,
                                'time_window': 0.5,
                                'lr': 1.0,
                                'alpha_inc': 0,
                                'jump_thrs': 0,
-                               'jump_mag': 2.1} #initial values for alpha_by_beta, beta, gamma, delta_by_gamma, zeta
+                               'jump_mag': 2.1}
         else:
+            #Extracts optimal parameters from previous PT iterations
             with open(f'parameters/{self.prob_type}/{self.flattened_big_ns}/optimal_param_{self.big_ns[self.size_num-1]}.json', 'r') as f:
                 all_params = json.load(f)
             starting_params = {'alpha_by_beta': all_params['alpha_by_beta'],
@@ -81,46 +72,38 @@ class Solver_PT:
                                'alpha_inc': all_params['alpha_inc'],
                                'jump_thrs': all_params['jump_thrs'],
                                'jump_mag': all_params['jump_mag']}
-        param_mask = [[starting_params['alpha_by_beta'], starting_params['alpha_by_beta']], #[0, 1] FIX
-                      [starting_params['beta'], starting_params['beta']], #[1e-5, 1e2] FIX
-                      [starting_params['gamma'], starting_params['gamma']], #[0, 0.5] FIX
-                      [starting_params['delta_by_gamma'], starting_params['delta_by_gamma']], #[0, 1] FIX
-                      [starting_params['zeta'], starting_params['zeta']], #[1e-5, 1e1] FIX
-                      [1e-2, 1], #[1e-2, 1] FIX
-                      [1e-2, 1], #[1e-2, 1] FIX
-                      [1.0, 1.0],
-                      [0, 0],
-                      [0, 0],
-                      [2.1, 2.1]]
+        param_mask = [[0, 1], #fix by setting to [starting_params['alpha_by_beta'], starting_params['alpha_by_beta']]
+                      [1e-5, 1e2], #fix by setting to [starting_params['beta'], starting_params['beta']]
+                      [0, 0.5], #fix by setting to [starting_params['gamma'], starting_params['gamma']]
+                      [0, 1], #fix by setting to [starting_params['delta_by_gamma'], starting_params['delta_by_gamma']]
+                      [1e-5, 1e1], #fix by setting to [starting_params['zeta'], starting_params['zeta']]
+                      [1e-2, 1], #fix by setting to [starting_params['dt_0'], starting_params['dt_0']]
+                      [1e-2, 1], #fix by setting to [starting_params['lr'], starting_params['lr']]
+                      [starting_params['time_window'], starting_params['time_window']],
+                      [starting_params['alpha_inc'], starting_params['alpha_inc']],
+                      [starting_params['jump_thrs'], starting_params['jump_thrs']],
+                      [starting_params['jump_mag'], starting_params['jump_mag']]]
         current_replica_details = [self.objective(starting_params)] * self.replicas #initializes details for all replicas, which start at the same point in parameter space
-        '''cov = [[0.005, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0.003, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0.000001, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]''' #for draws from a multivariate gaussian
         distrb_params = {'alpha_by_beta': 0.005,
                     'beta': 10,
                     'gamma': 0.003,
                     'delta_by_gamma': 0.003,
                     'zeta': 10,
                     'dt_0': 3,
-                    'time_window': 3} #for draws from mixed gaussian and scale-free distributions
-        inverse_temps = np.geomspace(1e-1, 1e4, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically ###
-        ###inverse_temps = np.geomspace(1e-2, 1e7, max_evals) #for <E(T)> plot generation (simulated annealing) ###
+                    'time_window': 3} #for draws from mixed gaussian and log-normal distributions with the given variances
+    
+        #For E<T> plot generation (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+        '''inverse_temps = np.geomspace(self.lower_T, self.upper_T, max_evals) #for <E(T)> plot generation (simulated annealing)'''
+        #For normal PT (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+        inverse_temps = np.geomspace(self.lower_T, self.upper_T, self.replicas) #creates a list of inverse temps for each replica from 1/ln(mean(N)) to 10, spaced geometrically
+    
         for i in range(max_evals):
             new_replica_details = [0] * self.replicas
             for j in range(self.replicas):
                 new_param_values = [0] * len(starting_params)
                 #Metropolis Update (w/ a multivariate normal as the generating distribution)
                 #Determines a new set of parameters from the old ones, if they exist
-                #new_param_values = np.random.multivariate_normal([value for key, value in current_replica_details[j]['param'].items()], cov) #drawn from multivariate gaussian
-                for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & scale-free distributions
+                for k, key in enumerate(current_replica_details[j]['param'].keys()): #drawn from mixed gaussian & log-normal distributions
                     if key == 'alpha_by_beta' or key == 'gamma' or key == 'delta_by_gamma': #draw from gaussians
                         new_param_values[k] = np.random.normal(current_replica_details[j]['param'][key], np.sqrt(distrb_params[key]))
                     elif key == 'beta' or key == 'zeta' or key == 'dt_0' or key == 'time_window': #draw from log-normals
@@ -131,8 +114,12 @@ class Solver_PT:
                 #Metropolis Update cont. (accepting/denying the proposed param values based on an Acceptance distribution)
                 #A(x_j(t), x_j(t+dt), T_j)
                 new_replica_details[j] = self.objective(new_params) #runs with new parameters and determines how effective they are (produces metric)
-                acceptance_prob = min(1, np.exp(-1 * (new_replica_details[j]['loss'] - current_replica_details[j]['loss']) * inverse_temps[j])) #k_B = 1 ###
-                ###acceptance_prob = min(1, np.exp(-1 * (new_replica_details[j]['loss'] - current_replica_details[j]['loss']) * inverse_temps[i])) ###
+
+                #For E<T> plot generation (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+                '''acceptance_prob = min(1, np.exp(-1 * (new_replica_details[j]['loss'] - current_replica_details[j]['loss']) * inverse_temps[i]))'''
+                #For normal PT (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+                acceptance_prob = min(1, np.exp(-1 * (new_replica_details[j]['loss'] - current_replica_details[j]['loss']) * inverse_temps[j])) #k_B = 1
+
                 if acceptance_prob >= np.random.uniform(): #only updates the parameters if the probability of acceptance is high enough
                     current_replica_details[j] = new_replica_details[j]
                     print(f'New, accepted parameters: {new_params}!')
@@ -148,13 +135,17 @@ class Solver_PT:
                         print(f'Replicas {j} and {j-1} swapped!')
                     else:
                         print(f'Replicas {j} and {j-1} did not swap.')
-                    ###with open(f'results/{self.prob_type}/swap_acceptance_prob_{self.ns}_{self.replicas}.txt', 'a') as f:###
-                        ###f.write(f'{j},{swap_acceptance_prob}\n')###
-            ###with open(f'results/{self.prob_type}/annealed_energy_{self.ns}.txt', 'a') as f: ###
-                ###f.write(f'{inverse_temps[i]},{current_replica_details[j]['loss']}\n') ###
+                    #with open(f'training/{self.prob_type}/{self.flattened_big_ns}/swap_acceptance_prob_{self.ns}_{self.replicas}.txt', 'a') as f:
+                        #f.write(f'{j},{swap_acceptance_prob}\n')
+
+            #For E<T> plot generation (ONLY UNCOMMENT WITH CORRESPONDING OPTION IN benchmark.py IS SELECTED)
+            '''with open(f'training/{self.prob_type}/{self.flattened_big_ns}/annealed_energy_{self.ns}.txt', 'a') as f:
+                f.write(f'{inverse_temps[i]},{current_replica_details[j]['loss']}\n')'''
+
         print(f'Optimal params: {self.best_param}')
         print(f'Best metric: {self.best_metric}')
 
+    #Collects statistics on avalanches, for training purpose
     def avalanche_analysis(self, dmm, spin_traj, time_traj, time_window):
         cluster_sizes, memory_flag = avalanche_analysis_mp(spin_traj, time_traj, dmm.edges_var,
                                                            self.pool_avalanches, self.avalanche_minibatch,
@@ -167,9 +158,8 @@ class Solver_PT:
     def metric(self, avalanche_stats, unsolved_stats, tts_stats):
         metric = 0
 
-        #LRO Contribution
+        #LRO Contribution (currently not implemented in metric)
         lro_metric = 0
-        # slope, intercept, r, avl_max = stats.transpose()
         '''target_stats = np.concatenate([np.tile(np.array([-1.5, 0, -0.98]), (len(self.ns), 1)),
                                        np.log10(self.ns).reshape(-1, 1)], axis=1)
         target_std = np.tile(np.array([1, 0.5, 0.02, 0.2]), (len(self.ns), 1))
@@ -180,7 +170,7 @@ class Solver_PT:
         lro_metric += 4 * target_stats[:, 0].std()
         print('LRO contribution: ' + str(lro_metric))'''
 
-        #UnSAT Contribution
+        #UnSAT Contribution (currently not implemented in metric)
         unsat_metric = 0
         '''unsat_mean = [ns_stats[0] for ns_stats in unsolved_stats]
         unsat_std = [ns_stats[1] for ns_stats in unsolved_stats]
@@ -191,16 +181,8 @@ class Solver_PT:
 
         #TTS Contribution
         tts_metric = 0
-        #THESE ARE ONLY DISTRIBUTION STATS ON THE FIRST 51 INSTANCES TO BE SOLVED
-        '''for i in range(len(tts_stats)): #len(tts_stats) = len(self.ns)
-            tts_mean = tts_stats[i][0]
-            #print('TTS Mean: ' + str(tts_mean))
-            tts_var = tts_stats[i][1]
-            #print('TTS Var: ' + str(tts_var))
-            tts_skewness = tts_stats[i][2]
-            tts_kurt = tts_stats[i][3]
-            tts_metric += 1*tts_mean# + 1*(np.abs(tts_mean/tts_var - 9/(tts_skewness**2)) + np.abs(tts_mean/tts_var - 15/tts_kurt))'''
-
+        #Extracts the y-intercept, slope, and concavity of the T(N) (time to solve a median of instances as a function of size) when plotted in log10
+        #Uses this information to generate a metric (tries to minimize all 3 simultaneously)
         instances_solved = [len(tts_stats[i]) for i in range(len(tts_stats))]
         print('Instances Solved: ' + str(instances_solved))
         best_percentile = min(instances_solved)
@@ -208,7 +190,7 @@ class Solver_PT:
         if best_percentile == 0:
             print('No instances solved at some n :(')
             tts_metric += 1e6
-        elif best_percentile < 50:
+        elif best_percentile < 45: #gives some leeway, in case especially small instances solve only 49/50 before stopping themselves
             print('Too few instances solved at some n')
             tts_metric += 1e5/best_percentile
         else:
@@ -222,19 +204,19 @@ class Solver_PT:
             #print('TTS Slope Lower: ' + str(tts_slope_lower))
             tts_concavity = tts_slope_upper - tts_slope_lower
             print('TTS Concavity: ' + str(tts_concavity))
-            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity
+            tts_metric += small_n_bp_tts + 2*tts_slope + 0.5*tts_concavity #c_1=2 and c_2=0.5 were selected to prioritize slope, the y-intercept, then concavity
 
         metric += lro_metric + unsat_metric + tts_metric
         print('Total metric: ' + str(metric))
         return metric
 
+    #Runs DMM 
     def objective(self, param):
         tts_stats = []
         unsolved_stats = []
         avalanche_stats = []
         eqn_choice = 'sean_choice' #param['eqn_choice'] #need to fix this so the multi-equation hyperopt functionality is restored
         for i, n in enumerate(self.ns):
-            # cnf_file = self.cnf_files[i][self.file_pointer]
             dmm = DMM(self.cnf_files[i], simple=self.simple, batch=self.batch, param=param, eqn_choice=eqn_choice, prob_type=self.prob_type)
             transient = 100
             break_threshold = 0.5
@@ -253,20 +235,10 @@ class Solver_PT:
             true_solved_step = solved_step[mask]
             true_solved_step = sorted(true_solved_step.tolist())
             print('True Solved Steps: ' + str(true_solved_step))
-            #THESE ARE ONLY DISTRIBUTION STATS ON THE FIRST 51 INSTANCES TO BE SOLVED (doesn't work in all cases)
-            tts_mean = np.mean(true_solved_step)
-            tts_var = np.var(true_solved_step)
-            tts_skewness = skew(true_solved_step)
-            tts_kurt = kurtosis(true_solved_step)
-            #print('TTS Mean: ' + str(tts_mean))
-            #print('TTS Var: ' + str(tts_var))
-            #print('TTS Skew: ' + str(tts_skewness))
-            #print('TTS Kurtosis: ' + str(tts_kurt))
-            tts_stats.append([tts_mean, tts_var, tts_skewness, tts_kurt])
-
             tts_stats.append(true_solved_step)
 
-            #UnSAT Stats
+            #Collects some supplementary statistics (only necessary when avalanche_stats, unsolved_stats, and tts_stats contribute to the metric)
+            '''#UnSAT Stats
             unsat_moments_sample_size = (solved_step + 1 - transient)
             unsat_moments_sample_size[is_solved] -= 1
             unsat_moments_sample_size.clamp_(min=1)
@@ -286,7 +258,7 @@ class Solver_PT:
 
             #Avalanche Stats
             avalanche_stat_i = self.avalanche_analysis(dmm, spin_traj, time_traj, param['time_window'])
-            avalanche_stats.append(avalanche_stat_i)
+            avalanche_stats.append(avalanche_stat_i)'''
 
         unsolved_stats = np.array(unsolved_stats)
         avalanche_stats = np.array(avalanche_stats)
@@ -297,6 +269,7 @@ class Solver_PT:
             self.best_param = param
             self.best_eqn_choice = eqn_choice
 
+        #Extracts statistics to a .p file
         stats = {
             'n': self.ns,
             'param': param,
@@ -309,14 +282,9 @@ class Solver_PT:
         self.file_pointer += 1
         if self.file_pointer >= len(self.cnf_files[0]):
             self.file_pointer = 0
-        # self.reinitialize()
 
         return {
             'loss': metric,
             'param': param,
             'status': STATUS_OK
         }
-
-    # def reinitialize(self):
-
-

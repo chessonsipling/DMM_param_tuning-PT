@@ -8,7 +8,6 @@ Each "logic variable" is a continuous variable between [-1, 1]
 @author: Yuanhang Zhang
 """
 
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -24,6 +23,7 @@ def bin2dec(b, bits):
     return torch.sum(mask * b, -1)
 
 
+#Defines the class associated with a particular 3SAT instance
 class OR(nn.Module):
     def __init__(self, input_idx, input_sign, simple):
         super(OR, self).__init__()
@@ -33,6 +33,7 @@ class OR(nn.Module):
         self.input_sign = input_sign
         self.simple = simple
 
+    #Initializes short- and long-term memory DOFs
     def init_memory(self, v):
         batch0 = v.shape[0]
         input = v[torch.arange(batch0).view((batch0, 1, 1)),
@@ -47,6 +48,7 @@ class OR(nn.Module):
         self.xs.grad = torch.zeros_like(self.xs)
         self.alpha_multiplier = torch.ones_like(self.xl)
 
+    #Calculates the change in DMM variables/fuctions for a single instance, provided DMM equations
     def calc_grad(self, v, param, eqn_choice):
         # param: (n_param, batch)
         # batch = v.shape[0]
@@ -55,6 +57,7 @@ class OR(nn.Module):
         self.input_idx]
         v_input = v_input * self.input_sign  # (batch, n_clause, n_sat)
 
+        #Determines necessary parameters for chosen equations
         if eqn_choice == 'rudy_simple':
             alpha, delta, chi, zeta, _ = param
         elif eqn_choice == 'rudy_choice':
@@ -68,8 +71,8 @@ class OR(nn.Module):
         v_top, v_top_idx = torch.topk(v_input, 2, dim=-1)
 
 
-        ###################################################################################
-        #SAT
+        ################################################################################################################################################################################
+        #SAT Equations (CHOOSE ONLY ONE, CORRESPONDING TO CHOSEN INSTANCES)
         v_top = (1 - v_top) / 2
 
         C = v_top[:, :, 0]
@@ -94,19 +97,20 @@ class OR(nn.Module):
             R *= ((zeta * torch.log(self.xl)) * (1 - self.xs)).unsqueeze(-1)
 
         dv = -(G + R) * self.input_sign
-        #Linear x_{l,m}
-        #dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))
-        #Linear growth, exponential decay x_{l,m}
+        #Linear x_{l,m} (CHOOSE ONLY ONE)
+        '''dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))'''
+        #Linear growth, exponential decay x_{l,m} (CHOOSE ONLY ONE)
         dxl = torch.where(C >= delta_by_gamma*gamma, -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma)), -(10 * (C - delta_by_gamma*gamma) * (self.xl - 1)))
-        #Exponential x_{s,m}
-        #dxs = -(beta * (self.xs + epsilon) * (C - gamma))
-        #Linear x_{s, m}
+
+        #Exponential x_{s,m} (CHOOSE ONLY ONE)
+        '''dxs = -(beta * (self.xs + epsilon) * (C - gamma))'''
+        #Linear x_{s, m} (CHOOSE ONLY ONE)
         dxs = -(beta * (C - gamma))
-        ###################################################################################
+        ################################################################################################################################################################################
 
 
-        ###################################################################################
-        #XORSAT
+        ################################################################################################################################################################################
+        #XORSAT Equations (CHOOSE ONLY ONE, CORRESPONDING TO CHOSEN INSTANCES)
         '''C = (1 - torch.prod(v_input, dim=-1)) / 2
         G_below = torch.ones(batch, n_clause, n_sat, dtype=v_input.dtype)
         G_above = torch.ones(batch, n_clause, n_sat, dtype=v_input.dtype)
@@ -158,9 +162,10 @@ class OR(nn.Module):
             dv = -(G + R) * self.input_sign
             dxl = -(alpha_by_beta * beta * self.alpha_multiplier * (C - delta_by_gamma*gamma))
             dxs = -(beta * (self.xs + epsilon) * (C - gamma))'''
-        ###################################################################################
+        ################################################################################################################################################################################
         
 
+        #Consolidates variable gradients and updates each of their values
         if v.grad is None:
             v.grad = torch.zeros_like(v)
         if self.xl.grad is None:
@@ -177,7 +182,9 @@ class OR(nn.Module):
         else:
             return C, G, R, self.xl, self.xs
 
-    def calc_C(self, v): ###only valid for SAT problems (not XORSAT)
+    #Evlautes the clause functions in a SAT instance
+    #ONLY VALID FOR SAT (not XORSAT)
+    def calc_C(self, v):
         batch0 = v.shape[0]
         input = v[torch.arange(batch0).view((batch0, 1, 1)), self.input_idx]
         input = input * self.input_sign
@@ -185,6 +192,7 @@ class OR(nn.Module):
         C = (1 - C) / 2
         return C
 
+    #Clamps the memory DOFs
     def clamp(self, max_xl):
         self.xl.data.clamp_(1, max_xl)
         self.xs.data.clamp_(0, 1)

@@ -8,3 +8,4 @@ graphs_colossus/
 test.py
 training/
 parameters/
+data/

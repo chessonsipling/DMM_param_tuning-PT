@@ -18,6 +18,7 @@ torch.set_default_tensor_type(torch.cuda.FloatTensor
 mp.set_start_method('spawn', force=True)
 
 
+#Runs a particular DMM after it has been initialized
 @torch.no_grad()
 def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=0.5):
     is_solved = torch.zeros(dmm.batch, dtype=torch.bool)
@@ -30,7 +31,7 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
     # unsat_traj = []
     v_last = None
     # spin_flips = []
-    if not simple:
+    if not simple: #collects additional trajectories when simple = False
         v_traj = []
         xl_traj = []
         xs_traj = []
@@ -43,7 +44,7 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
     integration_time = torch.zeros(dmm.batch, dtype=torch.get_default_dtype())
 
     # transient_threshold = 1.5 * dmm.n_var ** 0.67
-    for step in range(max_steps):
+    for step in range(max_steps): #simulates the DMM for an additional time step of duration dt
         if simple:
             unsat_clauses, dt = dmm.compiled_step()
         else:
@@ -80,12 +81,15 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
         # if (n_solved_minibatch > break_threshold * dmm.minibatch).all():
             break
 
-    '''solutions = ((dmm.v.data > 0).int()).tolist()
+    #Extracts and writes the CO problem solutions for all instances they are found in a batch
+    '''#Can be verified by comparison with the .cnf files produced by dataset.py
+    os.makedirs(f'results/{dmm.prob_type}/Solutions', exist_ok=True)
+    solutions = ((dmm.v.data > 0).int()).tolist()
     solutions = ["".join(map(str, solutions[i])) for i in range(len(solutions))]
     for i in range(len(solutions)):
         if is_solved[i]:
             print(f'Instance {i:04d} solution: {solutions[i]}')
-            solution_file = open(f'results/{dmm.prob_type}/Benchmark/n{dmm.n_var}_solution_{i:04d}.txt', 'w')
+            solution_file = open(f'results/{dmm.prob_type}/Solutions/n{dmm.n_var}_solution_{i:04d}.txt', 'w')
             solution_file.write(f'{solutions[i]}')
             solution_file.close()'''
 
@@ -102,12 +106,13 @@ def run_dmm(dmm, max_steps, simple, save_steps=0, transient=10, break_threshold=
     else:
         return is_solved, solved_step, unsat_moments, spin_traj, time_traj, v_traj, xl_traj, xs_traj, C_traj, G_traj, R_traj, dt_traj, step
 
+
+#Runs the cluster finding function to find avalanches among a given set of logical DOF trajectories
 @torch.no_grad()
 def avalanche_analysis(spin_traj, time_traj, edges, time_window):
     batch = spin_traj.shape[0]
     cluster_sizes = []
     memory_flag = False
-    # time_window = 0.5
     time_stamps = time_traj // time_window
     mask = torch.diff(time_stamps, dim=1) > 0
     mask = torch.cat([torch.ones(batch, 1, dtype=torch.bool), mask], dim=1)
@@ -130,12 +135,14 @@ def avalanche_analysis(spin_traj, time_traj, edges, time_window):
     else:
         cluster_sizes = torch.cat(cluster_sizes)
         cluster_sizes = cluster_sizes[cluster_sizes > 0].cpu().numpy()
-        #For anti-instanton extraction
-        '''return cluster_sizes, label, memory_flag'''
-        #For usual avalanche analysis
-        return cluster_sizes, memory_flag
+        #For avalanche analysis with anti-instanton extraction (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+        return cluster_sizes, label, memory_flag
+        #For standard avalanche analysis (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+        '''return cluster_sizes, memory_flag'''
 
 
+#Extracts avalanches from DMM data trajectories
+#Can additionally extract the number of anti-instantons during a DMM's simulation (must be toggled off/on manually)
 def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subprocesses, time_window):
     spin_traj_minibatch = [spin_traj[i * minibatch:(i + 1) * minibatch] for i in range(subprocesses)]
     time_traj_minibatch = [time_traj[i * minibatch:(i + 1) * minibatch] for i in range(subprocesses)]
@@ -147,8 +154,8 @@ def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subproce
 
     cluster_sizes = []
     out_of_memory_flag = False
-    #For anti-instanton extraction
-    '''anti_instantons = 0 #keeps track of number of (temporally) adjascent, identical avalanches (i.e. consisting of the same set of flipping voltages)
+    #For avalanche analysis with anti-instanton extraction (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+    anti_instantons = 0 #keeps track of number of (temporally) adjascent, identical avalanches (i.e. consisting of the same set of flipping voltages)
     for i, p_avalanche_i in enumerate(p_avalanches):
         cluster_size, label, memory_flag = p_avalanche_i.get()
         cluster_sizes.append(cluster_size)
@@ -160,22 +167,22 @@ def avalanche_analysis_mp(spin_traj, time_traj, edges, pool, minibatch, subproce
                     set_of_flips_j.append(n)
             if set_of_flips_j == set_of_flips_last:
                 anti_instantons += 1
-            #set_of_flips_all.append(set_of_flips_j) ###
             set_of_flips_last = set_of_flips_j
         if memory_flag:
             out_of_memory_flag = True
     cluster_sizes = np.concatenate(cluster_sizes)
-    return cluster_sizes, anti_instantons, out_of_memory_flag'''
-    #For usual avalanche analysis
-    for p_avalanche_i in p_avalanches:
+    return cluster_sizes, anti_instantons, out_of_memory_flag
+    #For standard avalanche analysis (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTION IN benchmark.py)
+    '''for p_avalanche_i in p_avalanches:
         cluster_size, memory_flag = p_avalanche_i.get()
         cluster_sizes.append(cluster_size)
         if memory_flag:
             out_of_memory_flag = True
     cluster_sizes = np.concatenate(cluster_sizes)
-    return cluster_sizes, out_of_memory_flag
+    return cluster_sizes, out_of_memory_flag'''
 
 
+#Plots avalanche size distributions for a particular collection of instances
 def avalanche_size_distribution(cluster_sizes, name):
     # avalanche_data = []
     # cluster_sizes = np.concatenate(cluster_sizes, axis=0)
@@ -214,10 +221,10 @@ def avalanche_size_distribution(cluster_sizes, name):
 
         fig, ax = plt.subplots(figsize=(3.0, 1.75))
         ax.scatter(10**(bin_centers), hist, s=20, color='blue')
-        '''try:
-            ax.plot(10**(bin_centers), 10**(slope * bin_centers + intercept), 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}', color='red', linestyle='--')
-        except:
-            pass'''
+        # try:
+        #     ax.plot(10**(bin_centers), 10**(slope * bin_centers + intercept), 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}', color='red', linestyle='--')
+        # except:
+        #     pass
         #plt.legend(fontsize=16, loc= 'upper right')
         ax.set_xscale('log')
         ax.set_xlim(0.9, 110)
