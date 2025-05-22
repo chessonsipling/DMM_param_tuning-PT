@@ -8,9 +8,18 @@ Created on Mon Jan  3 16:07:55 2022
 import os
 import numpy as np
 import torch
-import warnings
 import logging
 
+
+#############################################################################################################################################################################################
+#FREE PARAMETERS DURING DATA GENERATION
+ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+num_instances = 100
+#############################################################################################################################################################################################
+
+
+#Defines the class used to generate 3SAT instances; batch gives number of unique instances, n is number of logical variables per instance
+#r is the clause-to-variable ratio (r = 4.3 are the hardest instances)
 class SAT_dataset:
     def __init__(self, batch, n, r=4.3, p0=0.08):
         self.batch = batch
@@ -18,6 +27,7 @@ class SAT_dataset:
         self.r = r
         self.p0 = p0
         
+    #Generates 3SAT instances via a Clause Distribution Control (CDC) procedure (Barthel et al. 2002)
     @torch.no_grad()
     def generate_instances(self, output_to_file=False, folder=None):
         batch = self.batch
@@ -93,6 +103,7 @@ class SAT_dataset:
         return clause_idx, clause_sign
 
 
+#Returns statistics on a particular instance (clause_idx, clause_sign, n_var, n_clause, n_sat, and n_sat_count) given its filename
 @torch.no_grad()
 def import_data(file):
     clauses = []
@@ -140,11 +151,10 @@ def import_data(file):
     n_sat, n_sat_count = np.unique(n_sat, return_counts=True)
     return clause_idx, clause_sign, n_var, n_clause, n_sat, n_sat_count
 
+
 if __name__ == '__main__':
-    ns = [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 6000, 7000, 8000, 9000, 10000]
     for n in ns:
         print(f'Generating instances with {n} variables...')
-        dataset = SAT_dataset(100, n)
-        dataset.generate_instances(True, folder='../DMM_param_tuning-main/data/')
+        dataset = SAT_dataset(num_instances, n)
+        dataset.generate_instances(True, folder='data/')
     
-

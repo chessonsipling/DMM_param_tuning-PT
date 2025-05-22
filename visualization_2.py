@@ -1,29 +1,23 @@
 import os
 import numpy as np
-import plt_config
 import matplotlib
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 color = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-from scipy.optimize import curve_fit
 
-import sys
+#############################################################################################################################################################################################
+#FREE PARAMETERS DURING VISUALIZATION
+prob_type = '3SAT' #specficies type of CO problem to solve; prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+default_interp = 'mitchell' #default interpolation scheme
+#############################################################################################################################################################################################
 
-def exponential_func(x, a, b, c):
-    return a * np.exp(b * x) + c
-
-prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
 
 plt.ioff()
 
-os.makedirs(f'results/{prob_type}/Benchmark/wide_param_search', exist_ok=True)
-
-default_interp = 'none' #'mitchell'
-
-
 #Extracts median TTS (in number of steps)
 folder = f'results/{prob_type}/Benchmark/wide_param_search'
+os.makedirs(folder, exist_ok=True)
 files = sorted(os.listdir(folder))
 ns = []
 step = []
@@ -123,12 +117,13 @@ plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks([5, 7, 8, 0, 1, 2, 3, 4, 6, 9, 10], all_param_mults, rotation=45)
 plt.yticks([5, 7, 8, 0, 1, 2, 3, 4, 6, 9, 10], all_param_mults)
 plt.colorbar(label=r'$N_{max}$ ($T_{median} < 10^6$ steps)')
-plt.savefig(f'{folder}/medianTTS_past_1E6_cmap_no_interp.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/medianTTS_past_1E6_cmap.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 
 #Plots avalanche and TTS distributions (across wide params)
 folder = f'results/{prob_type}/Benchmark/varied_all_avalanche'
+os.makedirs(folder, exist_ok=True)
 
 #Avalanche plot
 avalanche_plot = np.array([[1.75, 1.75, 1.75, 1.75, 1.75],
@@ -144,7 +139,7 @@ plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0], rotation=45)
 plt.yticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0])
 plt.colorbar(label='Scale-free exponent')
-plt.savefig(f'{folder}/avalanches_no_interp.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/avalanches.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 #TTS distribution plot
@@ -158,7 +153,7 @@ plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0], rotation=45)
 plt.yticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0])
 plt.legend(handles = [blue_patch, green_patch])
-plt.savefig(f'{folder}/tts_comparison_no_interp.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/tts_comparison.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 #Avalanche and TTS distribution plots (layered)
@@ -169,12 +164,13 @@ plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
 plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0], rotation=45)
 plt.yticks([0, 1, 2, 3, 4], [0.08, 0.5, 1.0, 3.0, 20.0])
-plt.savefig(f'{folder}/combined_avalanche_and_tts_no_interp.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/combined_avalanche_and_tts.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 
 #Extracts number of anti-instantons
 folder = f'results/{prob_type}/Benchmark/anti-instanton_condensation'
+os.makedirs(folder, exist_ok=True)
 files = sorted(os.listdir(folder))
 for file in files[:]:
     if 'instanton' not in file or not file.endswith('.txt'):
@@ -199,11 +195,11 @@ cmap3 = plt.cm.inferno
 cmap3.set_under('white')
 anti_instantons_per_batch = np.array(anti_instantons_per_batch).reshape(len(all_param_mults), len(all_param_mults))
 anti_instantons_per_batch = np.where(anti_instantons_per_batch == 0, 0.1, anti_instantons_per_batch)
-plt.imshow(anti_instantons_per_batch, norm=matplotlib.colors.LogNorm(vmin=1.0, vmax=np.max(anti_instantons_per_batch)), cmap=cmap3, interpolation='none') #'gaussian'
+plt.imshow(anti_instantons_per_batch, norm=matplotlib.colors.LogNorm(vmin=1.0, vmax=np.max(anti_instantons_per_batch)), cmap=cmap3, interpolation='gaussian')
 plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
 plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], all_param_mults, rotation=45)
 plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], all_param_mults)
 plt.colorbar(label='Anti-Instantons per Batch')
-plt.savefig(f'{folder}/anti_instantons_per_batch_no_interp.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/anti_instantons_per_batch.png', dpi=300, bbox_inches='tight')
 plt.close()

@@ -9,6 +9,7 @@ torch.set_default_tensor_type(torch.cuda.FloatTensor
                               if torch.cuda.is_available()
                               else torch.FloatTensor)
 
+
 def find(vertex, parent):
     if parent[vertex] != vertex:
         parent[vertex] = find(parent[vertex], parent)
@@ -89,4 +90,3 @@ def find_cluster_graph(lattice, edges):
         cluster_sizes = cluster_sizes[1:]
 
         return label, cluster_sizes
-
