@@ -219,14 +219,22 @@ def avalanche_size_distribution(cluster_sizes, name):
         # avalanche_data.append([slope, intercept, r] + quartiles.tolist())
         avalanche_data = np.array([slope, intercept, r, max_size])
 
-        fig, ax = plt.subplots()
-        ax.scatter(bin_centers, np.log10(hist), s=10, alpha=0.5)
-        ax.plot(bin_centers, slope * bin_centers + intercept, 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}')
-        # ax.set_yscale('log')
-        ax.set_xlabel('log10 (cluster size)')
-        ax.set_ylabel('log10 (Probability)')
+        fig, ax = plt.subplots(figsize=(3.0, 1.75))
+        ax.scatter(10**(bin_centers), hist, s=20, color='blue')
+        # try:
+        #     ax.plot(10**(bin_centers), 10**(slope * bin_centers + intercept), 'r--', label=f'{slope:.2f}x+{intercept:.2f} r={r:.2f}', color='red', linestyle='--')
+        # except:
+        #     pass
+        #plt.legend(fontsize=16, loc= 'upper right')
+        ax.set_xscale('log')
+        ax.set_xlim(0.9, 110)
+        ax.set_yscale('log')
+        ax.xaxis.label.set_size(12)
+        ax.yaxis.label.set_size(12)
+        ax.set_xlabel(r'Cluster Size $s$')
+        ax.set_ylabel(r'$P(s)$')
         plt.savefig(f'{name}_{slope:.2f}_{intercept:.2f}_{r:.2f}.png',
-                    dpi=72, bbox_inches='tight')
+                    dpi=300, bbox_inches='tight')
         plt.close()
 
     return avalanche_data

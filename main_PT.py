@@ -3,32 +3,42 @@ import numpy as np
 from solver_PT import Solver_PT
 import matplotlib.pyplot as plt
 import pandas as pd
+from data_analysis import data_analysis
 
-import sys
 
-prob_type = '3SAT' #sys.argv[1] #prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+#############################################################################################################################################################################################
+#FREE PARAMETERS DURING TRAINING
+eqn_choice = 'sean_choice' #specifies DMM equations; can ONLY take on the values 'sean_choice', 'diventra_choice', 'yuanhang_choice', and 'zeta_zero' (and 'R_zero', 'rudy_choice', or 'rudy_simple' for XORSAT)
+prob_type = '3SAT' #specficies type of CO problem to solve; prob_type can ONLY take on the values '3SAT', '3R3X', OR '5R5X'
+batch = 100 #number of instances in a batch
+max_step = int(5e3) #maximum simulation step
+tag = '_testing' #tag to add to file names
+big_ns = np.array([[10, 20, 30], [40, 50, 60]]) #array of system sizes N to simulate; include all sizes in which parameters were tuned simultaneously in the same sublist
+max_evals = 100 #maximum number of temperatures tested during <E(T)> plot generation, geometrically spaced between lower_T and upper_T
+#############################################################################################################################################################################################
+
+
+flattened_big_ns = str(big_ns.flatten().tolist()) + tag
+os.makedirs(f'training/{prob_type}/{flattened_big_ns}', exist_ok=True)
 
 if __name__ == '__main__':
     __spec__ = None
-    #os.makedirs(f'results/{prob_type}', exist_ok=True)
-    #os.makedirs(f'ckpts/{prob_type}', exist_ok=True)
-    ns = np.array([10, 20, 30])
-    os.makedirs(f'training/{prob_type}/{ns}', exist_ok=True)
 
-    instances_per_size = 100
-    replicas = 2 #10
-    cnf_files = []
-    for n in ns:
-        cnf_files_n = []
-        for i in range(instances_per_size):
-            if prob_type == '3SAT':
-                file = f'../DMM_param_tuning-main/data/p0_080/ratio_4_30/var_{n}/instances/transformed_barthel_n_{n}_r_4.300_p0_0.080_instance_{i+1:03d}.cnf'
-            elif prob_type == '3R3X':
-                file = f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{i:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/3R3X/{n}/problem_{i:04d}_XORgates.cnf'
-            elif prob_type == '5R5X':
-                file = f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}.cnf' #f'../DMM_param_tuning-main/data/XORSAT/5R5X/{n}/problem_{i:04d}_XORgates.cnf'
-            cnf_files_n.append(file)
-        cnf_files.append(cnf_files_n)
+    
+    #Collects instance data
+    for i, ns in enumerate(big_ns):
+        cnf_files = []
+        for j, n in enumerate(ns):
+            cnf_files_n = []
+            for k in range(batch):
+                if prob_type == '3SAT':
+                    file = f'data/p0_080/ratio_4_30/var_{n}/instances/transformed_barthel_n_{n}_r_4.300_p0_0.080_instance_{k+1:03d}.cnf'
+                elif prob_type == '3R3X':
+                    file = f'/data/XORSAT/3R3X/{n}/problem_{k:04d}.cnf' #f'/data/XORSAT/3R3X/{n}/problem_{k:04d}_XORgates.cnf'
+                elif prob_type == '5R5X':
+                    file = f'/data/XORSAT/5R5X/{n}/problem_{k:04d}.cnf' #f'/data/XORSAT/5R5X/{n}/problem_{j=k:04d}_XORgates.cnf'
+                cnf_files_n.append(file)
+            cnf_files.append(cnf_files_n)
 
         #<E(T)> plot generation; used to establish T_min and T_max (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTIONS IN run() IN solver_PT.py)
         '''replicas = 1
@@ -48,6 +58,9 @@ if __name__ == '__main__':
         plt.savefig(f'training/{prob_type}/{flattened_big_ns}/annealed_energy_distrb_{ns}.png')
         plt.clf()'''
 
-    #Standard PT
-    solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, batch=instances_per_size)
-    solver.run(max_evals=2) #100
+        #Applies Parallel Tempering (PT) approach to optimize parameters (CHOOSE ONLY ONE, SELECT CORRESPONDING OPTIONS IN run() IN solver_PT.py)
+        replicas = int(0.05*np.average(ns) + 10) #establishes number of replicas in ensemble
+        solver = Solver_PT(ns, cnf_files, prob_type, True, replicas, big_ns, flattened_big_ns, i, steps=max_step, batch=batch, lower_T=1e-1, upper_T=1e4) #Initializes Parallel Tempering (PT) device
+        solver.run(max_evals=int(100/replicas)) #performs PT to optimize parameters over a given triple of sizes; max_evals*replicas is fixed at 100
+        data_analysis(eqn_choice, prob_type, ns, flattened_big_ns) #Analyzes data after PT scheme is complete (extracts optimal parameters to a .json file)
+    

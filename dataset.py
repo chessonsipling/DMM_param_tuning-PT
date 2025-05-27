@@ -157,4 +157,3 @@ if __name__ == '__main__':
         print(f'Generating instances with {n} variables...')
         dataset = SAT_dataset(num_instances, n)
         dataset.generate_instances(True, folder='data/')
-    
