@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 color = plt.rcParams['axes.prop_cycle'].by_key()['color']
 import plt_config
 from scipy.interpolate import griddata
+from scipy.ndimage import generic_filter
 import math
 
 
@@ -18,6 +19,11 @@ default_interp = 'linear' #default interpolation scheme
 
 def func(x, y):
     return x*(1-x)*np.cos(4*np.pi*x) * np.sin(4*np.pi*y**2)**2
+
+def majority_vote_filter(values):
+    # Convert values to integers if needed
+    vals, counts = np.unique(values, return_counts=True)
+    return vals[np.argmax(counts)]
 
 plt.ioff()
 
@@ -124,20 +130,21 @@ for x, value in data:
 
 #Interpolates data using scipy.interpolate
 plot_array = plot_array.flatten()
-log_x_grid1, log_y_grid1 = np.mgrid[np.log(0.02):np.log(50):50j, np.log(0.02):np.log(50):50j]
+log_x_grid1, log_y_grid1 = np.mgrid[np.log(0.02):np.log(50):100j, np.log(0.02):np.log(50):100j]
 log_x_grid1 = math.e**log_x_grid1
 log_y_grid1 = math.e**log_y_grid1
 interpolated_plot_array = griddata(xy_array1, plot_array, (log_x_grid1, log_y_grid1), method=default_interp)
+interpolated_plot_array = generic_filter(interpolated_plot_array, majority_vote_filter, size=1)
 
 plt.pcolormesh(log_x_grid1, log_y_grid1, interpolated_plot_array, norm=matplotlib.colors.LogNorm(vmin=plot_array.min(), vmax=plot_array.max()), cmap='magma')
 plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
 plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks(rotation=45)
-plt.ylim(log_y_grid1[-1][-1], log_y_grid1[0][0])
+plt.ylim(log_y_grid1[0][0], log_y_grid1[-1][-1])
 plt.xscale('log')
 plt.yscale('log')
 plt.colorbar(label=r'$N_{max}$ ($T_{median} < 10^6$ steps)')
-plt.savefig(f'{folder}/medianTTS_past_1E6_cmap_{default_interp}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/medianTTS_past_1E6_cmap_{default_interp}_redone.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -146,11 +153,11 @@ folder = f'results/{prob_type}/Benchmark/varied_all_avalanche'
 os.makedirs(folder, exist_ok=True)
 
 #Avalanche plot
-avalanche_array = np.array([[1.75, 1.75, 1.75, 1.75, 1.75],
-                           [2.42, 2.54, 2.60, 1.75, 1.75],
-                           [1.75, 1.75, 2.63, 1.75, 1.75],
-                           [1.75, 2.37, 2.65, 1.75, 1.75],
-                           [1.75, 1.75, 2.72, 2.60, 1.75]])
+avalanche_array = np.array([[5.00, 5.00, 5.00, 5.00, 5.00],
+                           [2.42, 2.54, 2.60, 5.00, 5.00],
+                           [5.00, 5.00, 2.63, 5.00, 5.00],
+                           [5.00, 2.37, 2.65, 5.00, 5.00],
+                           [5.00, 5.00, 2.72, 2.60, 5.00]]) #5.00 indicates NO scale-freeness
 
 #Produces xy array that data comes from
 x_array2 = np.array([0.08, 0.5, 1.0, 3.0, 20.0])
@@ -159,26 +166,27 @@ xy_array2 = np.array([[x, y] for y in y_array2 for x in x_array2])
 
 #Interpolates data using scipy.interpolate
 avalanche_array = avalanche_array.flatten()
-log_x_grid2, log_y_grid2 = np.mgrid[np.log(0.08):np.log(20):30j, np.log(0.08):np.log(20):30j]
+log_x_grid2, log_y_grid2 = np.mgrid[np.log(0.08):np.log(20):100j, np.log(0.08):np.log(20):100j]
 log_x_grid2 = math.e**log_x_grid2
 log_y_grid2 = math.e**log_y_grid2
 interpolated_avalanche_array = griddata(xy_array2, avalanche_array, (log_x_grid2, log_y_grid2), method=default_interp)
+interpolated_avalanche_array = generic_filter(interpolated_avalanche_array, majority_vote_filter, size=1)
 
-cmap1 = plt.cm.viridis
-cmap1.set_under('white')
-plt.pcolormesh(log_x_grid2, log_y_grid2, interpolated_avalanche_array, norm=matplotlib.colors.Normalize(vmin=2.00, vmax=3.00), cmap=cmap1)
+cmap1 = plt.cm.get_cmap('viridis')
+cmap1.set_over('white')
+plt.pcolormesh(log_x_grid2, log_y_grid2, interpolated_avalanche_array, norm=matplotlib.colors.Normalize(vmin=2.40, vmax=3.00), cmap=cmap1)
 plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
 plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks(rotation=45)
-plt.ylim(log_y_grid2[-1][-1], log_y_grid2[0][0])
+plt.ylim(log_y_grid2[0][0], log_y_grid2[-1][-1])
 plt.xscale('log')
 plt.yscale('log')
 plt.colorbar(label='Scale-free exponent')
-plt.savefig(f'{folder}/avalanches_{default_interp}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/avalanches_{default_interp}_redone.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 #TTS distribution plot
-tts_array = np.array([[0, 0, 0, 0, 0],
+'''tts_array = np.array([[0, 0, 0, 0, 0],
                      [0, 1, 1, 1, 0],
                      [0, 1, 1, 1, 1],
                      [0, 1, 1, 1, 1],
@@ -200,10 +208,10 @@ plt.xscale('log')
 plt.yscale('log')
 plt.legend(handles = [blue_patch, green_patch], loc='upper left')
 plt.savefig(f'{folder}/tts_comparison_{default_interp}.png', dpi=300, bbox_inches='tight')
-plt.close()
+plt.close()'''
 
 #Avalanche and TTS distribution plots (layered)
-plt.pcolormesh(log_x_grid2, log_y_grid2, interpolated_avalanche_array, norm=matplotlib.colors.Normalize(vmin=2.00, vmax=3.00), cmap=cmap1)
+'''plt.pcolormesh(log_x_grid2, log_y_grid2, interpolated_avalanche_array, norm=matplotlib.colors.Normalize(vmin=2.00, vmax=3.00), cmap=cmap1)
 plt.colorbar(label=r'Scale-free exponent')
 plt.pcolormesh(log_x_grid2, log_y_grid2, interpolated_tts_array, cmap=cmap2, alpha=0.35)
 plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
@@ -213,7 +221,7 @@ plt.ylim(log_y_grid2[-1][-1], log_y_grid2[0][0])
 plt.xscale('log')
 plt.yscale('log')
 plt.savefig(f'{folder}/combined_avalanche_and_tts_{default_interp}.png', dpi=300, bbox_inches='tight')
-plt.close()
+plt.close()'''
 
 
 #Extracts number of anti-instantons
@@ -243,17 +251,24 @@ anti_instantons_per_batch = np.where(anti_instantons_per_batch == 0, 0.1, anti_i
 
 #Interpolates data using scipy.interpolate
 anti_instantons_per_batch = anti_instantons_per_batch.flatten()
-interpolated_anti_instantons_per_batch = griddata(xy_array1, anti_instantons_per_batch, (log_x_grid1, log_y_grid1), method=default_interp)
 
 cmap3 = plt.cm.inferno
 cmap3.set_under('white')
-plt.pcolormesh(log_x_grid1, log_y_grid1, interpolated_anti_instantons_per_batch, norm=matplotlib.colors.LogNorm(vmin=1.0, vmax=np.max(anti_instantons_per_batch)), cmap=cmap3)
+log_x_grid3, log_y_grid3 = np.mgrid[np.log10(all_param_mults[0]):np.log10(all_param_mults[-1]):100j,
+                                          np.log10(all_param_mults[0]):np.log10(all_param_mults[-1]):100j]
+log_x_grid3 = 10**log_x_grid3
+log_y_grid3 = 10**log_y_grid3
+xy_array = np.array([[x, y] for y in all_param_mults for x in all_param_mults])
+interpolated_anti_instantons_per_batch = griddata(xy_array, anti_instantons_per_batch, (log_x_grid3, log_y_grid3), method=default_interp)
+interpolated_anti_instantons_per_batch = generic_filter(interpolated_anti_instantons_per_batch, majority_vote_filter, size=1)
+
+plt.pcolormesh(log_x_grid3, log_y_grid3[::-1], interpolated_anti_instantons_per_batch, norm=matplotlib.colors.LogNorm(vmin=1.0, vmax=np.max(anti_instantons_per_batch)), cmap=cmap3)
 plt.xlabel(r'$\zeta$ (units of $\zeta_{opt}$)')
 plt.ylabel(r'$\beta$ (units of $\beta_{opt}$)')
 plt.xticks(rotation=45)
-plt.ylim(log_y_grid1[-1][-1], log_y_grid1[0][0])
+plt.ylim(log_y_grid1[0][0], log_y_grid1[-1][-1])
 plt.xscale('log')
 plt.yscale('log')
 plt.colorbar(label='Anti-Instantons per Batch')
-plt.savefig(f'{folder}/anti_instantons_per_batch_{default_interp}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{folder}/anti_instantons_per_batch_{default_interp}_redone.png', dpi=300, bbox_inches='tight')
 plt.close()
